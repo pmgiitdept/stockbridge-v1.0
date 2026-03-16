@@ -1,0 +1,9 @@
+{
+    "name": "stockbridge/contract_system",
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.29.0",
+        "sabberworm/php-css-parser": "^8.4.0",
+        "ext-mysqli": "*",
+        "mpdf/mpdf": "^8.3"
+    }
+}
