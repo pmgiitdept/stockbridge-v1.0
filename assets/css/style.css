@@ -184,7 +184,7 @@ body {
 .table-card {
     background: #ffffff;
     border-radius: 14px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
     overflow-x: auto;
 }
 
@@ -197,6 +197,10 @@ body {
 .table-card th, .table-card td {
     text-align: left;
     padding: 12px 15px;
+}
+
+.table-card tbody tr:nth-child(even) {
+    background: #f9fafb;
 }
 
 .table-card th {
@@ -576,8 +580,25 @@ body {
     font-size: 12px;
     padding: 4px 10px;
     border-radius: 9999px;
+    text-align: center;
     color: #fff;
 }
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-reviewed {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-approved,
+.status-verified {
+    background-color: #2ecc71; 
+}
+.status-rejected { background-color: #F87171; }
 
 .status-badge.active { background: #22C55E; }
 .status-badge.inactive { background: #F87171; }

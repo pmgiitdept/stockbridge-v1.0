@@ -5,7 +5,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_officer']);
+authorize(['operations_officer', 'operations_manager', 'president']);
 
 $selectedPeriod = $_GET['period'] ?? '';
 $selectedProjectChart = $_GET['project_chart'] ?? '';
@@ -379,7 +379,7 @@ function computeFormula($formula, $data){
                     ?>
 
                     <tr>
-                        <td style="text-align:left;"><?= htmlspecialchars($row['project']) ?></td>
+                        <td style="text-align:left; font-weight:600;"><?= htmlspecialchars($row['project']) ?></td>
                         <td>₱ <?= number_format($totals[$row['project']]['sc'],2) ?></td>
                         <td>₱ <?= number_format($totals[$row['project']]['sc_contract'],2) ?></td>
 
@@ -599,7 +599,7 @@ function computeFormula($formula, $data){
                 ?>
 
                 <tr>
-                    <td style="text-align:left;"><?= htmlspecialchars($row['project']) ?></td>
+                    <td style="text-align:left; font-weight:600;"><?= htmlspecialchars($row['project']) ?></td>
                     <td>₱ <?= number_format($totals[$row['project']]['sc'],2) ?></td>
                     <td>₱ <?= number_format($totals[$row['project']]['sc_contract'],2) ?></td>
 

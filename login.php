@@ -31,6 +31,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
         } elseif ($user['role'] === 'operations_officer') {
             header("Location: modules/operations_officer/dashboard.php");
             exit();
+        } elseif ($user['role'] === 'operations_manager') {
+            header("Location: modules/operations_manager/dashboard.php");
+            exit();
         } else {
             header("Location: modules/client/dashboard.php");
             exit();
@@ -99,6 +102,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     exit();
                 } elseif ($user['role'] === 'purchasing_officer') {
                     header("Location: modules/purchasing/dashboard.php");
+                    exit();
+                } elseif ($user['role'] === 'operations_manager') {
+                    header("Location: modules/operations_manager/dashboard.php");
                     exit();
                 } elseif ($user['role'] === 'operations_officer') {
                     header("Location: modules/operations_officer/dashboard.php");

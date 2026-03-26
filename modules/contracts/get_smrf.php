@@ -13,7 +13,6 @@ if (!$clientId) {
     exit;
 }
 
-// Fetch all SMRFs for this client based on client_forms.reference_id
 $stmt = $conn->prepare("
     SELECT 
         s.smrf_id AS id,

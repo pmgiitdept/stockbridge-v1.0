@@ -2907,3 +2907,53 @@ table td {
     color: #6b7280;
     pointer-events: none;
 }
+
+.statusDropdown{
+    padding:6px 10px;
+    border-radius:6px;
+    border:1px solid #dcdcdc;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    outline:none;
+    transition:all 0.2s ease;
+    min-width:130px;
+}
+
+.statusDropdown:hover{
+    border-color:#999;
+}
+
+.statusDropdown:focus{
+    border-color:#4a90e2;
+    box-shadow:0 0 0 2px rgba(74,144,226,0.15);
+}
+
+.statusDropdown.status-pending{
+    background:#fff7e6;
+    border-color:#f0c36d;
+    color:#9a6700;
+}
+
+.statusDropdown.status-approved{
+    background:#e6f7ec;
+    border-color:#8fd19e;
+    color:#1e7e34;
+}
+
+.statusDropdown.status-rejected{
+    background:#fdecea;
+    border-color:#e6a1a1;
+    color:#a11a1a;
+}
+
+.statusDropdown.status-reviewed {
+    background: #e6f7ff;      
+    border-color: #66c2ff;    
+    color: #005b99;           
+}
+
+.status-reviewed {
+    background-color: #cce5ff; 
+    color: #004085;           
+}

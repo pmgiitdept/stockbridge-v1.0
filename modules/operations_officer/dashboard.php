@@ -8,45 +8,73 @@ authorize(['operations_officer']);
 require_once "../../layouts/header.php";
 require_once "../../layouts/sidebar.php";
 
-// Summary counts
-$resultContracts = $conn->query("SELECT COUNT(*) as total FROM contracts");
+$resultContracts = $conn->query("
+    SELECT COUNT(DISTINCT user_id) as total 
+    FROM contracts
+");
 $totalContracts = $resultContracts ? $resultContracts->fetch_assoc()['total'] : 0;
 
-$resultActive = $conn->query("SELECT COUNT(*) as total FROM contracts WHERE status = 'active'");
+$resultActive = $conn->query("
+    SELECT COUNT(DISTINCT user_id) as total 
+    FROM contracts 
+    WHERE status = 'active'
+");
 $totalActiveContracts = $resultActive ? $resultActive->fetch_assoc()['total'] : 0;
 
-$resultLogs = $conn->query("
-    SELECT COUNT(*) as total 
-    FROM audit_logs 
-    WHERE module = 'Contract Management'
+$resultTransactions = $conn->query("
+    SELECT SUM(total) as total FROM (
+        SELECT COUNT(DISTINCT reference_id) as total FROM client_forms
+        UNION ALL
+        SELECT COUNT(*) as total FROM smrf_forms
+        UNION ALL
+        SELECT COUNT(*) as total FROM pr_forms
+    ) as combined
 ");
-$totalLogs = $resultLogs ? $resultLogs->fetch_assoc()['total'] : 0;
 
-// Recent submissions (Forms + SMRF)
+$totalTransactions = $resultTransactions ? $resultTransactions->fetch_assoc()['total'] : 0;
+
 $limit = 10;
 $recentSubmissions = [];
 
 $resultRecent = $conn->query("
-    SELECT 
-        'Form' AS type,
-        f.id AS reference_no,
-        u.full_name,
-        f.site,
-        f.created_at
-    FROM forms_lists f
-    LEFT JOIN users u ON f.user_id = u.id
+    SELECT * FROM (
 
-    UNION ALL
+        -- CLIENT FORMS (grouped per submission)
+        SELECT 
+            'Client Form' AS type,
+            cf.reference_id AS reference_no,
+            u.full_name,
+            '-' AS site,
+            MAX(cf.created_at) AS created_at
+        FROM client_forms cf
+        LEFT JOIN users u ON cf.user_id = u.id
+        GROUP BY cf.reference_id
 
-    SELECT 
-        'SMRF' AS type,
-        s.reference_id AS reference_no,
-        u.full_name,
-        s.project AS site,
-        s.created_at
-    FROM smrf_forms s
-    LEFT JOIN users u ON s.created_by = u.id
+        UNION ALL
 
+        -- SMRF
+        SELECT 
+            'SMRF' AS type,
+            s.smrf_id AS reference_no,
+            u.full_name,
+            s.project AS site,
+            s.created_at
+        FROM smrf_forms s
+        LEFT JOIN users u ON s.created_by = u.id
+
+        UNION ALL
+
+        -- PR
+        SELECT 
+            'PR' AS type,
+            p.pr_id AS reference_no,
+            u.full_name,
+            p.project AS site,
+            p.created_at
+        FROM pr_forms p
+        LEFT JOIN users u ON p.created_by = u.id
+
+    ) AS combined
     ORDER BY created_at DESC
     LIMIT $limit
 ");
@@ -55,15 +83,16 @@ if ($resultRecent) {
     $recentSubmissions = $resultRecent->fetch_all(MYSQLI_ASSOC);
 }
 
-// Charts data
 $chartContractsLabels = [];
 $chartContractsData = [];
 $resultChart = $conn->query("
-    SELECT DATE_FORMAT(created_at,'%b %Y') as month, COUNT(*) as total
+    SELECT 
+        DATE_FORMAT(created_at,'%b %Y') as month, 
+        COUNT(DISTINCT user_id) as total
     FROM contracts
     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
     GROUP BY month
-    ORDER BY created_at ASC
+    ORDER BY MIN(created_at) ASC
 ");
 if($resultChart){
     while($row = $resultChart->fetch_assoc()){
@@ -72,22 +101,108 @@ if($resultChart){
     }
 }
 
-$chartLogsLabels = [];
-$chartLogsData = [];
-$resultChartLogs = $conn->query("
-    SELECT DATE_FORMAT(created_at,'%b %Y') as month, COUNT(*) as total
-    FROM audit_logs
-    WHERE module = 'Contract Management'
-      AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+$chartTransactionsLabels = [];
+$chartTransactionsData = [];
+
+$resultChartTransactions = $conn->query("
+    SELECT month, SUM(total) as total FROM (
+
+        -- CLIENT FORMS (grouped per submission)
+        SELECT 
+            DATE_FORMAT(created_at,'%b %Y') as month,
+            COUNT(DISTINCT reference_id) as total
+        FROM client_forms
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        GROUP BY month
+
+        UNION ALL
+
+        -- SMRF
+        SELECT 
+            DATE_FORMAT(created_at,'%b %Y') as month,
+            COUNT(*) as total
+        FROM smrf_forms
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        GROUP BY month
+
+        UNION ALL
+
+        -- PR
+        SELECT 
+            DATE_FORMAT(created_at,'%b %Y') as month,
+            COUNT(*) as total
+        FROM pr_forms
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        GROUP BY month
+
+    ) as combined
+
     GROUP BY month
-    ORDER BY created_at ASC
+    ORDER BY STR_TO_DATE(month, '%b %Y') ASC
 ");
-if($resultChartLogs){
-    while($row = $resultChartLogs->fetch_assoc()){
-        $chartLogsLabels[] = $row['month'];
-        $chartLogsData[] = (int)$row['total'];
+
+if($resultChartTransactions){
+    while($row = $resultChartTransactions->fetch_assoc()){
+        $chartTransactionsLabels[] = $row['month'];
+        $chartTransactionsData[] = (int)$row['total'];
     }
 }
+
+$months = [];
+$formsData = [];
+$smrfData = [];
+$prData = [];
+
+for ($i = 5; $i >= 0; $i--) {
+    $monthKey = date('Y-m', strtotime("-$i months"));
+    $monthLabel = date('M Y', strtotime("-$i months"));
+    $months[$monthKey] = $monthLabel;
+
+    $formsData[$monthKey] = 0;
+    $smrfData[$monthKey] = 0;
+    $prData[$monthKey] = 0;
+}
+
+$resForms = $conn->query("
+    SELECT DATE_FORMAT(created_at,'%Y-%m') as month, 
+           COUNT(DISTINCT reference_id) as total
+    FROM client_forms
+    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY month
+");
+
+while($row = $resForms->fetch_assoc()){
+    $formsData[$row['month']] = (int)$row['total'];
+}
+
+$resSmrf = $conn->query("
+    SELECT DATE_FORMAT(created_at,'%Y-%m') as month, 
+           COUNT(*) as total
+    FROM smrf_forms
+    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY month
+");
+
+while($row = $resSmrf->fetch_assoc()){
+    $smrfData[$row['month']] = (int)$row['total'];
+}
+
+$resPr = $conn->query("
+    SELECT DATE_FORMAT(created_at,'%Y-%m') as month, 
+           COUNT(*) as total
+    FROM pr_forms
+    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY month
+");
+
+while($row = $resPr->fetch_assoc()){
+    $prData[$row['month']] = (int)$row['total'];
+}
+
+$chartLabels = array_values($months);
+$chartForms = array_values($formsData);
+$chartSmrf = array_values($smrfData);
+$chartPr = array_values($prData);
 ?>
 
 <link rel="stylesheet" href="/contract_system/assets/css/price_lists.css">
@@ -112,6 +227,11 @@ if($resultChartLogs){
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 20px;
+}
+
+.type-badge.pr {
+    background: #fef3c7;
+    color: #92400e;
 }
 </style>
 
@@ -145,8 +265,8 @@ if($resultChartLogs){
             <div class="card" style="background-color:#f59e0b;">
                 <div class="icon">📝</div>
                 <div>
-                    <h4>Total Logs / Transactions</h4>
-                    <p><?= $totalLogs ?></p>
+                    <h3>Transactions (Forms, SMRF, PR)</h3>
+                    <p><?= $totalTransactions ?></p>
                 </div>
                 <div class="trend down"><span class="arrow">↓</span>--</div>
             </div>
@@ -231,23 +351,44 @@ new Chart(ctxContracts, {
     }
 });
 
-const ctxLogs = document.getElementById('logsChart').getContext('2d');
-new Chart(ctxLogs, {
+const ctxTransactions = document.getElementById('logsChart').getContext('2d');
+
+new Chart(ctxTransactions, {
     type: 'bar',
     data: {
-        labels: <?= json_encode($chartLogsLabels) ?>,
-        datasets: [{
-            label: 'Logs / Transactions',
-            data: <?= json_encode($chartLogsData) ?>,
-            backgroundColor: 'rgba(16, 185, 129, 0.7)',
-            borderColor: 'rgba(16, 185, 129, 1)',
-            borderWidth: 1
-        }]
+        labels: <?= json_encode($chartLabels) ?>,
+        datasets: [
+            {
+                label: 'Client Forms',
+                data: <?= json_encode($chartForms) ?>,
+                backgroundColor: 'rgba(59, 130, 246, 0.7)'
+            },
+            {
+                label: 'SMRF',
+                data: <?= json_encode($chartSmrf) ?>,
+                backgroundColor: 'rgba(16, 185, 129, 0.7)'
+            },
+            {
+                label: 'PR',
+                data: <?= json_encode($chartPr) ?>,
+                backgroundColor: 'rgba(245, 158, 11, 0.7)'
+            }
+        ]
     },
     options: {
         responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        plugins: {
+            legend: { display: true }
+        },
+        scales: {
+            x: {
+                stacked: true
+            },
+            y: {
+                stacked: true,
+                beginAtZero: true
+            }
+        }
     }
 });
 </script>

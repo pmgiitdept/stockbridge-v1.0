@@ -68,6 +68,29 @@ $userData = $result->fetch_assoc();
                 <li><a href="../budgets/supplies_monitoring.php">Supplies Monitoring</a></li>
             <?php endif; ?>
 
+            <?php if ($_SESSION['role'] === 'operations_manager'): ?>
+                <li><a href="../operations_manager/dashboard.php">Dashboard</a></li>
+                
+                <li class="menu-label">Master Lists</li>
+                <li><a href="../operations_officer/master_lists.php">Master Lists</a></li>
+                
+                <li class="menu-label">SMRF Lists</li>
+                <li><a href="../operations_manager/smrf_lists.php">SMRF Workflow</a></li>
+
+                <li class="menu-label">Purchase Requests</li>
+                <li><a href="../operations_manager/pr_lists.php">PR Workflow</a></li>
+
+                <li class="menu-label">Contracts</li>
+                <li><a href="../contracts/listed_contracts.php">Listed Contracts</a></li>
+
+                <li class="menu-label">Budget Monitoring</li>
+                <li><a href="../budgets/overall_budget.php">Overall Budgets</a></li>
+                <li><a href="../budgets/supplies_monitoring.php">Supplies Monitoring</a></li>
+
+                <li class="menu-label">Results and Status</li>
+                <li><a href="../forms/forms_status.php">Forms Status Archives</a></li>
+            <?php endif; ?>
+
             <?php if (in_array($_SESSION['role'], ['admin','president'])): ?>
                 <li class="menu-label">Forms Management</li>
                 <li><a href="../forms/forms_status.php">Forms Status</a></li>
@@ -86,12 +109,10 @@ $userData = $result->fetch_assoc();
                 <li class="menu-label">Purchasing</li>
                 <li><a href="../purchasing/manage_price_lists.php">Manage Price Lists</a></li>
                 <li><a href="../forms/purchase_requests.php">Purchase Requests Forms</a></li>
-                
-            <?php endif; ?>
-            
-            <?php if (in_array($_SESSION['role'], ['president', 'purchasing_officer', 'operations_manager'])): ?>
+
                 <li class="menu-label">Results and Status</li>
                 <li><a href="../forms/forms_status.php">Forms Status</a></li>
+                
             <?php endif; ?>
 
             <?php if (in_array($_SESSION['role'], ['president', 'purchasing_officer'])): ?>
@@ -260,7 +281,9 @@ $userData = $result->fetch_assoc();
                 <h4><i class="fas fa-headset"></i> Contact IT Support</h4>
                 <p>If you experience system issues, reach out to our IT team:</p>
                 <p><i class="fas fa-envelope text-blue"></i> 
-                   <a href="mailto:support@pmgi.com">itdept.pmgi@gmail.com</a></p>
+                   <a href="https://mail.google.com/mail/?view=cm&fs=1&to=pmgi.itdept@gmail.com" target="_blank">
+                        pmgi.itdept@gmail.com
+                   </a></p>
                 <p><i class="fas fa-phone text-green"></i> 
                    <a href="tel:+639000000000">+63 919 066 6137</a></p>
             </div>

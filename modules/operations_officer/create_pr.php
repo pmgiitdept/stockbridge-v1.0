@@ -22,11 +22,13 @@ $date = $conn->real_escape_string($data['date']);
 $requesting_department = $conn->real_escape_string($data['requesting_department']);
 $project = $conn->real_escape_string($data['project'] ?? '');
 $purpose = $conn->real_escape_string($data['purpose_of_requisition'] ?? '');
-$requested_by = $conn->real_escape_string($data['requested_by'] ?? '');
+
+$requested_by = $_SESSION['full_name'] ?? '';
 $reviewed_by = $conn->real_escape_string($data['reviewed_by'] ?? '');
 $approved_by = $conn->real_escape_string($data['approved_by'] ?? '');
 $received_by = $conn->real_escape_string($data['received_by'] ?? '');
 $created_by = $_SESSION['user_id'];
+
 $items = $data['items'];
 
 $conn->begin_transaction();
@@ -89,7 +91,7 @@ try {
     logAudit(
         $conn,
         $_SESSION['user_id'],
-        "Created PR $pr_id | Period: $period | Project: $project | Items: " . implode(" | ", $itemSummary),
+        "Created PR $pr_id | Period: $period | Project: $project | Items: " . implode(" | ", $itemSummary) . " | Requested By: $requested_by",
         "PR Creation"
     );
 

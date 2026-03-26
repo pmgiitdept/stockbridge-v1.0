@@ -314,7 +314,7 @@ $selectedSite = $_GET['site'] ?? '';
         </div>
 
         <?php
-        function renderContractsByCategory($contracts, $months_per_frequency, $selectedSite = '') {
+        function renderContractsByCategory($contracts, $months_per_frequency, $selectedSite = '', $prefix = '') {
             $grouped = [];
             foreach ($contracts as $c) {
                 $site = $c['site'] ?: '-';
@@ -329,7 +329,7 @@ $selectedSite = $_GET['site'] ?? '';
                 
         $collapseId = 'collapse_' . md5($siteName . uniqid());
         ?>
-            <div class="site-info-card collapsible-header" data-target="site-<?= md5($siteName) ?>">
+            <div class="site-info-card collapsible-header" data-target="<?= $prefix ?>-site-<?= md5($siteName) ?>">
                 <div class="site-info-left">
                     <span class="toggle-icon">▾</span>
                     <span class="site-icon">📍</span>
@@ -339,7 +339,7 @@ $selectedSite = $_GET['site'] ?? '';
                 </div>
             </div>
             
-            <div id="site-<?= md5($siteName) ?>" class="collapsible-content">
+            <div id="<?= $prefix ?>-site-<?= md5($siteName) ?>" class="collapsible-content">
                 <div class="contracts-table-wrapper">
                     <table class="contractsTable">
                         <thead>
@@ -435,12 +435,12 @@ $selectedSite = $_GET['site'] ?? '';
         <div class="section-divider">
             <span>Supplies & Consumables</span>
         </div>
-        <?php renderContractsByCategory($supplies, $months_per_frequency,  $selectedSite); ?>
+        <?php renderContractsByCategory($supplies, $months_per_frequency, $selectedSite, 'supplies'); ?>
 
         <div class="section-divider">
             <span>Tools & Equipment</span>
         </div>
-        <?php renderContractsByCategory($tools, $months_per_frequency,  $selectedSite); ?>
+        <?php renderContractsByCategory($tools, $months_per_frequency, $selectedSite, 'tools'); ?>
     </div>
 
     <div style="margin-bottom:15px; font-size:14px; color:#374151;">

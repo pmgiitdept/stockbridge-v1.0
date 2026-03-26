@@ -15,7 +15,7 @@ if(empty($data) || !is_array($data)) {
     exit;
 }
 
-$referenceId = 'FORM-' . time() . '-' . rand(1000,9999);
+$referenceId = 'FORM-' . strtoupper(uniqid());
 
 $userId = $_SESSION['user_id'];
 
