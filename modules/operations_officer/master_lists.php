@@ -5,7 +5,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_officer', 'operations_manager']);
+authorize(['operations_officer', 'operations_manager', 'president']);
 
 $limit = 12; 
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -16,21 +16,26 @@ $legend = $_GET['legend'] ?? '';
 $searchParam = "%$search%";
 
 if($search && $legend){
-    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists 
-        WHERE (item_code LIKE ? OR item_description LIKE ?) AND legend = ?");
+    $stmtCount = $conn->prepare("
+    SELECT COUNT(*) as total 
+        FROM price_lists 
+        WHERE (item_code LIKE ? OR item_description LIKE ?) 
+        AND legend = ? 
+        AND status = 'active'
+    ");
     $stmtCount->bind_param("sss", $searchParam, $searchParam, $legend);
 }
 elseif($search){
     $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists 
-        WHERE item_code LIKE ? OR item_description LIKE ?");
+        WHERE item_code LIKE ? OR item_description LIKE ? AND status = 'active'");
     $stmtCount->bind_param("ss", $searchParam, $searchParam);
 }
 elseif($legend){
-    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists WHERE legend = ?");
+    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists WHERE legend = ? AND status = 'active'");
     $stmtCount->bind_param("s", $legend);
 }
 else{
-    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists");
+    $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM price_lists WHERE status = 'active'");
 }
 
 $stmtCount->execute();
@@ -44,7 +49,7 @@ if($search && $legend){
     $stmt = $conn->prepare("SELECT id, reference_id, item_code, item_description, unit,
                             unit_price, pmgi_unit_price, legend
                             FROM price_lists
-                            WHERE (item_code LIKE ? OR item_description LIKE ?) AND legend = ?
+                            WHERE (item_code LIKE ? OR item_description LIKE ?) AND legend = ? AND status = 'active'
                             ORDER BY reference_id ASC
                             LIMIT ? OFFSET ?");
     $stmt->bind_param("sssii", $searchParam, $searchParam, $legend, $limit, $offset);
@@ -53,7 +58,7 @@ elseif($search){
     $stmt = $conn->prepare("SELECT id, reference_id, item_code, item_description, unit,
                             unit_price, pmgi_unit_price, legend
                             FROM price_lists
-                            WHERE item_code LIKE ? OR item_description LIKE ?
+                            WHERE item_code LIKE ? OR item_description LIKE ? AND status = 'active'
                             ORDER BY reference_id ASC
                             LIMIT ? OFFSET ?");
     $stmt->bind_param("ssii", $searchParam, $searchParam, $limit, $offset);
@@ -62,7 +67,7 @@ elseif($legend){
     $stmt = $conn->prepare("SELECT id, reference_id, item_code, item_description, unit,
                             unit_price, pmgi_unit_price, legend
                             FROM price_lists
-                            WHERE legend = ?
+                            WHERE legend = ? AND status = 'active'
                             ORDER BY reference_id ASC
                             LIMIT ? OFFSET ?");
     $stmt->bind_param("sii", $legend, $limit, $offset);
@@ -70,7 +75,7 @@ elseif($legend){
 else{
     $stmt = $conn->prepare("SELECT id, reference_id, item_code, item_description, unit,
                             unit_price, pmgi_unit_price, legend
-                            FROM price_lists
+                            FROM price_lists WHERE status = 'active'
                             ORDER BY reference_id ASC
                             LIMIT ? OFFSET ?");
     $stmt->bind_param("ii", $limit, $offset);
@@ -112,7 +117,6 @@ $stmt->close();
                 <table id="itemListTable">
                     <thead>
                         <tr>
-                            <th>Item No.</th>
                             <th>Item Code</th>
                             <th>Item Description</th>
                             <th>Unit</th>
@@ -125,7 +129,6 @@ $stmt->close();
                         <?php if (!empty($items)): ?>
                             <?php foreach($items as $row): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($row['reference_id']) ?></td>
                                     <td><?= htmlspecialchars($row['item_code']) ?></td>
                                     <td><?= htmlspecialchars($row['item_description']) ?></td>
                                     <td><?= htmlspecialchars($row['unit']) ?></td>

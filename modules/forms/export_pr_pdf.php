@@ -4,11 +4,12 @@ require_once "../../core/session.php";
 require_once "../../core/auth.php";
 require_once "../../vendor/autoload.php";
 
-authorize(['operations_officer']);
+authorize(['operations_officer', 'operations_manager', 'president', 'purchasing_officer']);
 
 $pr_id = $_GET['pr_id'] ?? null;
 if (!$pr_id) die("Invalid PR ID.");
 
+// Fetch PR
 $stmt = $conn->prepare("SELECT * FROM pr_forms WHERE pr_id = ?");
 $stmt->bind_param("s", $pr_id);
 $stmt->execute();
@@ -17,6 +18,20 @@ $pr = $result->fetch_assoc();
 
 if (!$pr) die("PR not found.");
 
+// Fetch approved_by and received_by names
+function getUserName($userId, $conn) {
+    if (!$userId) return '-';
+    $stmt = $conn->prepare("SELECT full_name FROM users WHERE id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $res = $stmt->get_result()->fetch_assoc();
+    return $res['full_name'] ?? '-';
+}
+
+$approvedByName = getUserName($pr['approved_by'], $conn);
+$receivedByName = getUserName($pr['received_by'], $conn);
+
+// Fetch PR items
 $itemStmt = $conn->prepare("
     SELECT quantity, unit, item_description, remarks
     FROM pr_items
@@ -36,25 +51,60 @@ $mpdf = new \Mpdf\Mpdf([
     'default_font' => 'leelawadeeui'
 ]);
 
+
 $html = '
 <style>
-body { font-family: "leelawadeeui", sans-serif; font-size:12px; margin:0; padding:0; }
+body { font-family: "leelawadeeui", sans-serif; font-size:10px; margin:0; padding:0; }
 .main-container { display:flex; flex-direction:column; height:100%; }
-.main-header { text-align:center; margin-bottom:10px; }
-.main-header img { width:70px; display:block; margin:0 auto 10px auto; }
-.main-header div { font-size: 10pt; }
-.main-header div:first-child { font-size:14pt; font-weight:bold; }
-.main-header div:last-child { font-size:13pt; font-weight:bold; margin-top:5px; }
+.main-header { text-align:center; margin-bottom:8px; }
+.main-header img { width:60px; display:block; margin:0 auto 8px auto; }
+.main-header div { font-size: 9pt; }
+.main-header div:first-child { font-size:12pt; font-weight:bold; }
+.main-header div:last-child { font-size:11pt; font-weight:bold; margin-top:4px; }
 .details-table, .items-table, .signature-table { width:100%; border-collapse:collapse; }
-.details-table td { border:1px solid #000; padding:5px; font-size:11px; vertical-align:top; }
-.items-table th, .items-table td { border:1px solid #000; padding:5px; font-size:11px; text-align:center; }
+.details-table td { border:1px solid #000; padding:4px; font-size:9px; vertical-align:top; }
+.items-table th, .items-table td { border:1px solid #000; padding:4px; font-size:9px; text-align:center; }
 .items-table th { font-weight:bold; border-bottom:1px solid #000; }
 td.description { text-align:center; }
-.justification-box { border:1px solid #000; padding:10px; min-height:80px; font-size:11px; text-align:left; }
-.signature-table td { border:1px solid #000; padding:8px; font-size:11px; vertical-align:top; }
-.signature-label { text-align:left; font-weight:bold; margin-bottom:15px; display:block; }
-.signature-note { font-size:10px; }
-.content-wrapper { flex-grow:1; display:flex; flex-direction:column; justify-content:space-between; }
+.justification-box {
+    border: 1px solid #000;
+    padding: 10px;
+    height: 60px;  
+    font-size: 9px;
+    text-align: left;
+}
+    
+.signature-table td {
+    border: 1px solid #000;
+    padding: 6px;
+    font-size: 12px;
+    height: 80px; /* taller signature box */
+    display: flex;
+    flex-direction: column;
+}
+
+.signature-label {
+    font-weight: bold;
+    text-align: center;
+}
+
+.signature-name-wrapper {
+    flex-grow: 1; /* take the remaining vertical space */
+    display: flex;
+    align-items: center; /* vertically center the name */
+    justify-content: center; /* optional: center horizontally */
+}
+
+.signature-name {
+    text-align: center;
+}
+
+.signature-note {
+    font-size: 10px;
+    text-align: center;
+}
+.content-wrapper { flex-grow:1; display:flex; flex-direction:column; justify-content:space-between; height: 100%; }
+.items-table { flex-grow: 1; }
 </style>
 
 <div class="main-container">
@@ -89,7 +139,7 @@ td.description { text-align:center; }
         </thead>
         <tbody>';
 
-$totalRowsPerPage = 25; 
+$totalRowsPerPage = 30; 
 $currentRowCount = !empty($items) ? count($items) : 1;
 $emptyRows = $totalRowsPerPage - $currentRowCount;
 if ($emptyRows < 0) $emptyRows = 0;
@@ -132,22 +182,22 @@ $html .= '
 <tr>
     <td>
         <span class="signature-label">Requested By</span>
-        '.htmlspecialchars($pr['requested_by'] ?: '-').'
+        <div class="signature-name">'.htmlspecialchars($pr['requested_by'] ?: '-').'</div>
         <div class="signature-note">Signature over Printed Name / Date</div>
     </td>
     <td>
         <span class="signature-label">Reviewed By</span>
-        '.htmlspecialchars($pr['reviewed_by'] ?: '-').'
+        <div class="signature-name">'.htmlspecialchars($pr['reviewed_by'] ?: '-').'</div>
         <div class="signature-note">Signature over Printed Name / Date</div>
     </td>
     <td>
         <span class="signature-label">Approved By</span>
-        '.htmlspecialchars($pr['approved_by'] ?: '-').'
+        <div class="signature-name">'.htmlspecialchars($approvedByName).'</div>
         <div class="signature-note">Signature over Printed Name / Date</div>
     </td>
     <td>
         <span class="signature-label">Received By</span>
-        '.htmlspecialchars($pr['received_by'] ?: '-').'
+        <div class="signature-name">'.htmlspecialchars($receivedByName).'</div>
         <div class="signature-note">Signature over Printed Name / Date</div>
     </td>
 </tr>

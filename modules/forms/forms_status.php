@@ -50,6 +50,54 @@ function getStatusClass($status){
         default: return 'status-badge status-pending';
     }
 }
+
+$monthlyData = [
+    'labels' => [],
+    'client' => [],
+    'smrf' => [],
+    'pr' => []
+];
+
+// Last 6 months
+for ($i = 5; $i >= 0; $i--) {
+    $month = date('Y-m', strtotime("-$i months"));
+    $label = date('M Y', strtotime($month));
+
+    $monthlyData['labels'][] = $label;
+
+    // CLIENT
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as total 
+        FROM client_forms 
+        WHERE DATE_FORMAT(created_at, '%Y-%m') = ?
+    ");
+    $stmt->bind_param("s", $month);
+    $stmt->execute();
+    $monthlyData['client'][] = $stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+
+    // SMRF
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as total 
+        FROM smrf_forms 
+        WHERE DATE_FORMAT(created_at, '%Y-%m') = ?
+    ");
+    $stmt->bind_param("s", $month);
+    $stmt->execute();
+    $monthlyData['smrf'][] = $stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+
+    // PR
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as total 
+        FROM pr_forms 
+        WHERE DATE_FORMAT(created_at, '%Y-%m') = ?
+    ");
+    $stmt->bind_param("s", $month);
+    $stmt->execute();
+    $monthlyData['pr'][] = $stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+}
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -220,6 +268,10 @@ foreach($prForms as $f){
         <div style="width: 400px; height: 400px;">
             <canvas id="categoryPieChart" style="width: 100%; height: 100%;"></canvas>
         </div>
+
+        <div style="width: 400px; height: 400px;">
+            <canvas id="trendChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
     </div>
 </div>
 
@@ -308,6 +360,53 @@ const categoryPieChart = new Chart(pieCtx, {
         }
     },
     plugins: [ChartDataLabels]
+});
+
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+
+const trendChart = new Chart(trendCtx, {
+    type: 'line',
+    data: {
+        labels: <?= json_encode($monthlyData['labels']) ?>,
+        datasets: [
+            {
+                label: 'Client Forms',
+                data: <?= json_encode($monthlyData['client']) ?>,
+                borderColor: '#3b82f6',
+                fill: false,
+                tension: 0.3
+            },
+            {
+                label: 'SMRF Forms',
+                data: <?= json_encode($monthlyData['smrf']) ?>,
+                borderColor: '#60a5fa',
+                fill: false,
+                tension: 0.3
+            },
+            {
+                label: 'PR Forms',
+                data: <?= json_encode($monthlyData['pr']) ?>,
+                borderColor: '#10b981',
+                fill: false,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Forms Submission Trend (Last 6 Months)'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                precision: 0
+            }
+        }
+    }
 });
 </script>
 

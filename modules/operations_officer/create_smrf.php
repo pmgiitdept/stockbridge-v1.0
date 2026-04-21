@@ -197,6 +197,20 @@ document.addEventListener('click', function(e){
     }
 });
 
+function showToast(message, type = 'warning') {
+    const container = document.getElementById('toastContainer');
+
+    const toast = document.createElement('div');
+    toast.classList.add('toast', `toast-${type}`);
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3600);
+}
+
 document.getElementById('submitSmrf').addEventListener('click', () => {
     const smrfId = 'SMRF-' + Date.now(); 
     const referenceId = document.getElementById('smrfReference').value;
@@ -218,6 +232,16 @@ document.getElementById('submitSmrf').addEventListener('click', () => {
             amount: parseFloat(cells[7].value) || 0
         });
     });
+    
+    if (!project || !period) {
+        showToast('Project and Period are required.', 'warning');
+        return;
+    }
+
+    if (items.length === 0) {
+        showToast('At least one item is required.', 'warning');
+        return;
+    }
 
     fetch('save_smrf.php', {
         method: 'POST',
@@ -225,13 +249,19 @@ document.getElementById('submitSmrf').addEventListener('click', () => {
         body: JSON.stringify({ smrf_id: smrfId, reference_id: referenceId, project, project_code: projectCode, period, items })
     })
     .then(res => res.json())
-    .then(data => {
+        .then(data => {
         if(data.success){
-            alert('SMRF created successfully!');
-            location.reload();
+            showToast('SMRF created successfully!', 'success');
+
+            setTimeout(() => {
+                location.reload();
+            }, 1200); 
         } else {
-            alert(data.message || 'Failed to create SMRF.');
+            showToast(data.message || 'Failed to create SMRF.', 'error');
         }
+    })
+    .catch(() => {
+        showToast('Network error. Please try again.', 'error');
     });
 });
 </script>

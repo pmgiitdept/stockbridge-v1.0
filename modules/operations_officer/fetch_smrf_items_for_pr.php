@@ -3,7 +3,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_officer', 'operations_manager']);
+authorize(['operations_officer', 'operations_manager', 'purchasing_officer']);
 header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents("php://input"), true);

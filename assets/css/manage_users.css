@@ -154,9 +154,8 @@
 .modal-content {
     background: #fff;
     margin: 5% auto;
-    padding: 30px 35px;
     border-radius: 12px;
-    width: 650px;
+    width: 850px;
     max-width: 95%;
     box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     position: relative;
@@ -342,7 +341,7 @@
 #editUserForm {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 10px;
 }
 
 #editUserForm .form-group {
@@ -397,4 +396,87 @@
 
 .status.complete {
     background-color: #22c55e; 
+}
+
+/* Password section - make fields side by side */
+.password-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* two equal columns */
+    gap: 15px;
+    padding: 20px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+/* Ensure each password field spans full column */
+.password-section .password-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make the toggle icon still aligned */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 38px; /* space for toggle */
+}
+
+/* Password input itself */
+.password-wrapper input {
+    width: 100%;
+    padding-right: 38px; /* space for the toggle icon */
+}
+
+/* Show/hide icon inside input */
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: #2563eb;
+}
+
+.password-section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 5px;
+}
+
+.password-note {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 15px;
+}
+
+/* Danger button */
+.danger-btn {
+    margin-top: 10px;
+    padding: 12px;
+    width: 100%;
+    background: #ef4444;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.danger-btn:hover {
+    background: #dc2626;
 }

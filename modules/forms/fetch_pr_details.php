@@ -3,7 +3,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_officer', 'operations_manager']);
+authorize(['operations_officer', 'operations_manager', 'president', 'purchasing_officer']);
 header('Content-Type: application/json');
 
 set_error_handler(function($errno, $errstr) {
@@ -19,7 +19,20 @@ if (!$prId) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT * FROM pr_forms WHERE pr_id = ? LIMIT 1");
+// Fetch PR with full names for all "by" fields
+$stmt = $conn->prepare("
+    SELECT 
+        pf.*,
+        u_req.full_name AS requested_by,
+        u_app.full_name AS approved_by,
+        u_rec.full_name AS received_by
+    FROM pr_forms pf
+    LEFT JOIN users u_req ON pf.created_by = u_req.id
+    LEFT JOIN users u_app ON pf.approved_by = u_app.id
+    LEFT JOIN users u_rec ON pf.received_by = u_rec.id
+    WHERE pf.pr_id = ? 
+    LIMIT 1
+");
 $stmt->bind_param('s', $prId);
 $stmt->execute();
 $prResult = $stmt->get_result();
@@ -31,6 +44,7 @@ if ($prResult->num_rows === 0) {
 
 $pr = $prResult->fetch_assoc();
 
+// Fetch PR items
 $stmt = $conn->prepare("
     SELECT quantity, unit, item_description, remarks, justification, source_smrf_id, source_reference_id
     FROM pr_items
@@ -41,6 +55,7 @@ $stmt->execute();
 $itemsResult = $stmt->get_result();
 $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
 
+// Return JSON
 echo json_encode([
     'success' => true,
     'pr' => $pr,

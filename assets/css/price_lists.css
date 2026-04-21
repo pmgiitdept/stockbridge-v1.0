@@ -72,21 +72,212 @@
     color: #b91c1c;
 }
 
+/* MAIN HEADER LAYOUT */
 .table-header {
-    display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* tighter layout */
+    align-items: center;
+    gap: 12px; /* reduced from 20px */
+    margin-bottom: 12px; /* tighter */
 }
 
-.upload-container {
+/* LEFT */
+.header-left {
     display: flex;
     flex-direction: column;
+    gap: 4px;
+}
+
+.upload-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upload-form input[type="file"] {
+    font-size: 13px;
 }
 
 .upload-label {
     font-size: 12px;
     color: #64748b;
-    margin-top: 4px;
+}
+
+/* CENTER */
+.header-center {
+    margin-bottom: 20px;
+}
+
+.search-container {
+    position: relative;
+    width: 100%;
+    max-width: 750px;
+}
+
+#filterInput {
+    width: 100%;
+    padding: 10px 36px 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    background-color: #f9fafb;
+    transition: all 0.2s ease;
+}
+
+#filterInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: #fff;
+}
+
+#clearSearch {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    color: #9ca3af;
+    display: none;
+}
+
+#clearSearch:hover {
+    color: #111827;
+}
+
+/* RIGHT */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+/* BULK CONTROLS */
+.bulk-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.bulk-controls select,
+.bulk-controls input {
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 13px;
+    background: #fff;
+}
+
+.bulk-controls input {
+    width: 120px;
+}
+
+/* FILE UPLOAD WRAPPER */
+.file-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 6px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* HIDE DEFAULT INPUT */
+.file-upload input[type="file"] {
+    display: none;
+}
+
+/* BUTTON STYLE */
+.file-btn {
+    background: #e2e8f0;
+    color: #1f2937;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.file-btn:hover {
+    background: #cbd5f5;
+}
+
+/* FILE NAME */
+.file-name {
+    font-size: 13px;
+    color: #475569;
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* UPLOAD BUTTON */
+.upload-btn {
+    height: 36px;
+    padding: 0 16px;
+}
+
+/* BUTTONS */
+.btn-primary {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: #f3f4f6;
+}
+
+/* ADD BUTTON */
+.add-btn {
+    font-weight: 600;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .table-header {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .header-center {
+        justify-content: flex-start;
+    }
+
+    .header-right {
+        flex-wrap: wrap;
+    }
 }
 
 table td.old-value {
@@ -127,83 +318,6 @@ table tbody tr:hover td.new-value {
     left: 0;
     white-space: nowrap;
     z-index: 10;
-}
-
-#uploadForm {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-#uploadForm input[type="file"] {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    cursor: pointer;
-    font-size: 14px;
-    background-color: #f9fafb;
-    transition: border-color 0.2s;
-}
-
-#uploadForm input[type="file"]:hover {
-    border-color: #3b82f6;
-}
-
-#uploadForm button {
-    background-color: #3b82f6;
-    color: #fff;
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background 0.2s, transform 0.1s;
-}
-
-#uploadForm button:hover {
-    background-color: #2563eb;
-    transform: translateY(-1px);
-}
-
-.search-container {
-    position: relative;
-    display: flex;      
-    align-items: center; 
-    max-width: 100%;    
-    width: 60%;        
-}
-
-#filterInput {
-    flex: 1;            
-    min-width: 220px;   
-    padding: 10px 35px 10px 15px; 
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    font-size: 14px;
-    background-color: #f9fafb;
-    transition: border-color 0.2s;
-}
-
-#filterInput:focus {
-    outline: none;
-    border-color: #3b82f6;
-}
-
-#clearSearch {
-    position: absolute;
-    right: 10px;       
-    top: 45%;
-    transform: translateY(-50%);
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 18px;
-    color: #888;
-    display: none;     
-}
-
-#clearSearch:hover {
-    color: #333;
 }
 
 table {
@@ -292,7 +406,6 @@ table td {
 }
 
 .modal-content .close-btn {
-    position: absolute;
     right: 15px; top: 12px;
     font-size: 18px;
     cursor: pointer;
@@ -387,7 +500,7 @@ table td {
 }
 
 .filter-btn {
-    padding: 6px 12px;
+    padding: 10px 18px;
     border-radius: 6px;
     font-size: 0.9rem;
     cursor: pointer;
@@ -923,6 +1036,9 @@ table td {
 }
 
 .smrf-table-wrapper th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     background-color: #f3f4f6;
     font-weight: 600;
 }
@@ -1058,6 +1174,7 @@ table td {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 22px;
+    margin-top: 10px;
 }
 
 .smrf-details-item {
@@ -1540,7 +1657,7 @@ table td {
     color: #111827;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -1647,7 +1764,7 @@ table td {
 }
 
 .modal-lg {
-    max-width: 1100px;
+    max-width: 1300px;
     width: 95%;
     display: flex;
     flex-direction: column;
@@ -1658,7 +1775,6 @@ table td {
     border-radius: 12px;
     background: #ffffff;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-    max-height: 90vh;
     overflow: hidden;
 }
 
@@ -2225,6 +2341,7 @@ table td {
 }
 
 #viewSmrfModal .modal-header,
+#viewContractsModal .modal-header,
 #smrfItemsModal .modal-header {
     display: flex;
     justify-content: space-between;
@@ -2234,6 +2351,7 @@ table td {
 }
 
 #viewSmrfModal .modal-header h3,
+#viewContractsModal .modal-header h3,
 #smrfItemsModal .modal-header h3 {
     font-size: 1.2rem;
     font-weight: 700;
@@ -2251,7 +2369,8 @@ table td {
 }
 
 .smrf-table-container,
-.smrf-items-table-container {
+.smrf-items-table-container,
+.contracts-table-container {
     padding: 0;
     max-height: 420px; 
     overflow-y: auto;
@@ -2261,24 +2380,38 @@ table td {
     border: 1px solid #e5e7eb;
 }
 
+.contracts-table-container {
+    padding: 0;
+    max-height: 650px; 
+    overflow-y: auto;
+    overflow-x: auto;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
 .smrf-table-container::-webkit-scrollbar,
-.smrf-items-table-container::-webkit-scrollbar {
+.smrf-items-table-container::-webkit-scrollbar,
+.contracts-table-container::-webkit-scrollbar {
     width: 8px;
 }
 
 .smrf-table-container::-webkit-scrollbar-thumb,
-.smrf-items-table-container::-webkit-scrollbar-thumb {
+.smrf-items-table-container::-webkit-scrollbar-thumb,
+.contracts-table-container::-webkit-scrollbar-thumb {
     background: #d1d5db;
     border-radius: 6px;
 }
 
 .smrf-table-container::-webkit-scrollbar-thumb:hover,
-.smrf-items-table-container::-webkit-scrollbar-thumb:hover {
+.smrf-items-table-container::-webkit-scrollbar-thumb:hover,
+.contracts-table-container::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
 }
 
 #smrfTable,
-#smrfItemsTable {
+#smrfItemsTable,
+#contractsTable {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.78rem;       
@@ -2287,7 +2420,8 @@ table td {
 }
 
 #smrfTable thead th,
-#smrfItemsTable thead th {
+#smrfItemsTable thead th,
+#contractsTable thead th {
     position: sticky;
     top: 0;
     background: #f9fafb;
@@ -2303,7 +2437,8 @@ table td {
     text-align: center;
 }
 
-#smrfTable td{
+#smrfTable td, 
+#contractsTable td {
     padding: 0.45rem 0.6rem;  
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
@@ -2318,7 +2453,8 @@ table td {
 }
 
 #smrfTable tbody tr:hover,
-#smrfItemsTable tbody tr:hover {
+#smrfItemsTable tbody tr:hover,
+#contractsTable tbody tr:hover {
     background-color: #f8fafc;
 }
 
@@ -2363,6 +2499,7 @@ table td {
 }
 
 #viewSmrfModal .modal-footer,
+#viewContractsModal .modal-footer,
 #smrfItemsModal .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -2372,6 +2509,7 @@ table td {
 }
 
 #viewSmrfModal .btn-cancel,
+#viewContractsModal .btn-cancel,
 #smrfItemsModal .btn-cancel {
     background: #111827;
     color: #ffffff;
@@ -2385,12 +2523,14 @@ table td {
 }
 
 #viewSmrfModal .btn-cancel:hover,
+#viewContractsModal .btn-cancel:hover,
 #smrfItemsModal .btn-cancel:hover {
     background: #1f2937;
     box-shadow: 0 6px 18px rgba(0,0,0,0.12);
 }
 
 #viewSmrfModal .modal-content,
+#viewContractsModal .modal-content,
 #smrfItemsModal .modal-content {
     border-radius: 12px;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.12);
@@ -2400,11 +2540,6 @@ table td {
 
 #viewSmrfModal.side-left {
     pointer-events: none;
-}
-
-#smrfItemsModal.side-right {
-    pointer-events: none;
-    background-color: transparent !important; 
 }
 
 #viewSmrfModal.side-left .modal-content,
@@ -2429,6 +2564,27 @@ table td {
     justify-content: flex-end;
 }
 
+#viewContractsModal.side-left {
+    pointer-events: none;
+}
+
+#viewContractsModal.side-left {
+    background: transparent !important;
+}
+
+#viewContractsModal.side-left .modal-content {
+    position: fixed;
+    left: 2%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50%;
+    height: 88vh;
+    z-index: 1010;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+}
+
 #smrfItemsModal.side-right .modal-content {
     position: fixed;
     right: 2%;
@@ -2436,16 +2592,83 @@ table td {
     transform: translateY(-50%);
     width: 45%;
     height: 88vh;
-    z-index: 1020;
+    z-index: 1010;
     display: flex;
     flex-direction: column;
 }
 
 #viewSmrfModal .modal-body,
+#viewContractsModal .modal-body,
 #smrfItemsModal .modal-body {
     overflow: auto;
     flex: 1;
     background: #ffffff;
+}
+
+#contractsTable.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;       
+    color: #374151;
+    min-width: 650px;
+}
+
+#contractsTable.styled-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f3f4f6; 
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #4b5563;
+    padding: 0.85rem 0.6rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: center;
+    box-shadow: 0 1px 0 #e5e7eb;
+}
+
+#contractsTable.styled-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+#contractsTable.styled-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+#contractsTable.styled-table tbody td {
+    padding: 0.55rem 0.6rem;
+    vertical-align: middle;
+    text-align: center;
+}
+
+#contractsTable.styled-table tbody td:nth-child(2) {
+    text-align: left;
+}
+
+#contractsTable.styled-table tbody td:nth-child(5),
+#contractsTable.styled-table tbody td:nth-child(6) {
+    text-align: right;
+    font-weight: 500;
+}
+
+#contractsTable.styled-table tbody tr:nth-child(even) {
+    background-color: #fcfcfc;
+}
+
+#contractsTable.styled-table tfoot td {
+    font-weight: 600;
+    background: #f3f4f6;
+    border-top: 2px solid #e5e7eb;
+}
+
+.contracts-table-container {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 0;
 }
 
 .smrf-mismatch-row {
@@ -2957,3 +3180,92 @@ table td {
     background-color: #cce5ff; 
     color: #004085;           
 }
+
+.dual-table-container {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.dual-table-container .table-card {
+    flex: 1;
+    min-width: 480px;
+}
+
+.trend {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.trend.up {
+    color: #16a34a; 
+}
+
+.trend.down {
+    color: #dc2626; 
+}
+
+.trend .arrow {
+    font-size: 14px;
+}
+
+.trend-label {
+    font-size: 10px;
+    font-weight: 400;
+    color: #ffffff; 
+    margin-top: 2px;
+}
+
+.site-input {
+    width: 100%;
+}
+
+.contracts-modal-table small {
+    display: block;
+    margin-top: 2px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.btn-toggle-status {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.btn-toggle-status.active {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.btn-toggle-status.inactive {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.btn-toggle-status:hover {
+    background: #e5e7eb;
+}
+

@@ -4,7 +4,7 @@ require_once "../../core/session.php";
 require_once "../../core/auth.php";
 require_once "../../core/audit.php";
 
-authorize(['operations_officer']);
+authorize(['operations_officer', 'purchasing_officer']);
 
 header('Content-Type: application/json');
 

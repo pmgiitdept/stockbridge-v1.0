@@ -13,10 +13,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $full_name = trim($_POST['full_name']);
     $email = trim($_POST['email']);
     $password = $_POST['password'];
+    $confirm_password = $_POST['confirm_password'];
     $role = $_POST['role'];
 
-    if (empty($full_name) || empty($email) || empty($password) || empty($role)) {
+    if (empty($full_name) || empty($email) || empty($password) || empty($confirm_password) || empty($role)) {
         $error = "All fields are required.";
+    } elseif ($password !== $confirm_password) {
+        $error = "Passwords do not match.";
     } else {
 
         $check = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
@@ -72,7 +75,6 @@ require_once "../../layouts/sidebar.php";
 ?>
 
 <link rel="stylesheet" href="/contract_system/assets/css/users.css">
-<link rel="icon" href="assets/images/stockbridge-logo.PNG">
 
 <div class="main-content">
 
@@ -90,6 +92,7 @@ require_once "../../layouts/sidebar.php";
     <?php endif; ?>
 
     <div class="content-grid">
+
         <div class="form-card">
             <form method="POST">
 
@@ -103,9 +106,56 @@ require_once "../../layouts/sidebar.php";
                     <input type="email" name="email" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group password-group">
                     <label>Password</label>
-                    <input type="password" name="password" required>
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('password', this)">
+                            <!-- EYE (VISIBLE) -->
+                            <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 
+                                0 8.268 2.943 9.542 7-1.274 4.057-5.065 
+                                7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+
+                            <!-- EYE OFF (HIDDEN) -->
+                            <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 
+                                0-8.27-2.943-9.544-7a9.956 9.956 0 
+                                012.293-3.95M6.7 6.7A9.953 9.953 0 
+                                0112 5c4.478 0 8.27 2.943 9.544 
+                                7a9.97 9.97 0 01-4.043 5.28M6.7 
+                                6.7L3 3m3.7 3.7l10.6 10.6"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group password-group">
+                    <label>Confirm Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" name="confirm_password" id="confirm_password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('confirm_password', this)">
+                            <!-- EYE (VISIBLE) -->
+                            <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 
+                                0 8.268 2.943 9.542 7-1.274 4.057-5.065 
+                                7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+
+                            <!-- EYE OFF (HIDDEN) -->
+                            <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 
+                                0-8.27-2.943-9.544-7a9.956 9.956 0 
+                                012.293-3.95M6.7 6.7A9.953 9.953 0 
+                                0112 5c4.478 0 8.27 2.943 9.544 
+                                7a9.97 9.97 0 01-4.043 5.28M6.7 
+                                6.7L3 3m3.7 3.7l10.6 10.6"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -126,33 +176,48 @@ require_once "../../layouts/sidebar.php";
             </form>
         </div>
 
-        <div class="table-card">
-            <h2>Existing Users</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Created At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while($user = mysqli_fetch_assoc($users_result)): ?>
+        <!-- USERS TABLE -->
+        <div class="users-section">
+            <div class="table-card">
+                <table>
+                    <thead>
                         <tr>
-                            <td><?php echo $user['id']; ?></td>
-                            <td><?php echo htmlspecialchars($user['full_name']); ?></td>
-                            <td><?php echo htmlspecialchars($user['email']); ?></td>
-                            <td><?php echo ucfirst(str_replace("_"," ",$user['role'])); ?></td>
-                            <td><?php echo date("M d, Y H:i", strtotime($user['created_at'])); ?></td>
+                            <th>ID</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created At</th>
                         </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php while($user = mysqli_fetch_assoc($users_result)): ?>
+                            <tr>
+                                <td><?php echo $user['id']; ?></td>
+                                <td><?php echo htmlspecialchars($user['full_name']); ?></td>
+                                <td><?php echo htmlspecialchars($user['email']); ?></td>
+                                <td><?php echo ucfirst(str_replace("_"," ",$user['role'])); ?></td>
+                                <td><?php echo date("M d, Y H:i", strtotime($user['created_at'])); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-
 </div>
+
+<script>
+function togglePassword(fieldId, button) {
+    const input = document.getElementById(fieldId);
+
+    if (input.type === "password") {
+        input.type = "text";
+        button.classList.add("active");
+    } else {
+        input.type = "password";
+        button.classList.remove("active");
+    }
+}
+</script>
 
 <?php require_once "../../layouts/footer.php"; ?>

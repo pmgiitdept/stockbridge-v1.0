@@ -159,7 +159,7 @@ $actualData = array_column($projectTotals, 'actual');
     <div class="budget-summary">
         <div class="card" style="background:#3b82f6; position:relative;">
             <div class="card-header">
-                <h4>Total Budget</h4>
+                <h4>Total Contracts Cost</h4>
                 <span class="info-icon" onclick="openModal('budgetInfo')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
                         <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10

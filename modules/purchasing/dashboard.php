@@ -8,7 +8,17 @@ authorize(['purchasing_officer']);
 require_once "../../layouts/header.php";
 require_once "../../layouts/sidebar.php";
 
-$totalSubmittedForms = 0;
+$totalPRReceived = 0;
+
+$resultPRReceived = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM pr_forms 
+    WHERE received_by IS NOT NULL
+");
+
+$totalPRReceived = $resultPRReceived 
+    ? $resultPRReceived->fetch_assoc()['total'] 
+    : 0;
 
 $resultItems = $conn->query("SELECT COUNT(*) as total FROM price_lists");
 $totalItems = $resultItems ? $resultItems->fetch_assoc()['total'] : 0;
@@ -16,7 +26,8 @@ $totalItems = $resultItems ? $resultItems->fetch_assoc()['total'] : 0;
 $sqlLogs = "
     SELECT COUNT(*) as total
     FROM price_list_audit_details d
-    JOIN audit_logs l ON d.audit_log_id = l.id
+    INNER JOIN audit_logs l ON d.audit_log_id = l.id
+    INNER JOIN users u ON l.user_id = u.id
     WHERE l.module = 'Price List Management'
 ";
 $resultLogs = $conn->query($sqlLogs);
@@ -30,6 +41,20 @@ if($resultPriceList){
 }
 
 $recentPurchaseRequests = [];
+
+$queryPR = "
+    SELECT pf.pr_id, pf.project, pf.status, pf.created_at, u.full_name as created_by
+    FROM pr_forms pf
+    JOIN users u ON pf.created_by = u.id
+    WHERE pf.status = 'approved'
+    ORDER BY pf.created_at DESC
+    LIMIT 10
+";
+
+$resultPR = $conn->query($queryPR);
+if ($resultPR) {
+    $recentPurchaseRequests = $resultPR->fetch_all(MYSQLI_ASSOC);
+}
 
 $chartItemsData = [];
 $chartItemsLabels = [];
@@ -50,13 +75,16 @@ if($resultChart){
 $chartLogsData = [];
 $chartLogsLabels = [];
 $resultChartLogs = $conn->query("
-    SELECT DATE_FORMAT(l.created_at,'%b %Y') as month, COUNT(*) as total
+    SELECT 
+        DATE_FORMAT(l.created_at,'%b %Y') as month, 
+        COUNT(*) as total
     FROM price_list_audit_details d
-    JOIN audit_logs l ON d.audit_log_id = l.id
+    INNER JOIN audit_logs l ON d.audit_log_id = l.id
+    INNER JOIN users u ON l.user_id = u.id
     WHERE l.module = 'Price List Management'
       AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-    GROUP BY month
-    ORDER BY l.created_at ASC
+    GROUP BY DATE_FORMAT(l.created_at,'%Y-%m')
+    ORDER BY MIN(l.created_at) ASC
 ");
 if($resultChartLogs){
     while($row = $resultChartLogs->fetch_assoc()){
@@ -64,6 +92,67 @@ if($resultChartLogs){
         $chartLogsData[] = (int)$row['total'];
     }
 }
+
+function calculatePercentageChange($current, $previous) {
+    if ($previous == 0) {
+        return $current > 0 ? 100 : 0;
+    }
+    return round((($current - $previous) / $previous) * 100);
+}
+
+$currentPR = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM pr_forms 
+    WHERE received_by IS NOT NULL
+    AND MONTH(created_at) = MONTH(CURDATE())
+    AND YEAR(created_at) = YEAR(CURDATE())
+")->fetch_assoc()['total'] ?? 0;
+
+$previousPR = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM pr_forms 
+    WHERE received_by IS NOT NULL
+    AND MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+    AND YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+")->fetch_assoc()['total'] ?? 0;
+
+$prChange = calculatePercentageChange($currentPR, $previousPR);
+
+$currentItems = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM price_lists
+    WHERE MONTH(uploaded_at) = MONTH(CURDATE())
+    AND YEAR(uploaded_at) = YEAR(CURDATE())
+")->fetch_assoc()['total'] ?? 0;
+
+$previousItems = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM price_lists
+    WHERE MONTH(uploaded_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+    AND YEAR(uploaded_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+")->fetch_assoc()['total'] ?? 0;
+
+$itemChange = calculatePercentageChange($currentItems, $previousItems);
+
+$currentLogs = $conn->query("
+    SELECT COUNT(*) as total
+    FROM price_list_audit_details d
+    INNER JOIN audit_logs l ON d.audit_log_id = l.id
+    WHERE l.module = 'Price List Management'
+    AND MONTH(l.created_at) = MONTH(CURDATE())
+    AND YEAR(l.created_at) = YEAR(CURDATE())
+")->fetch_assoc()['total'] ?? 0;
+
+$previousLogs = $conn->query("
+    SELECT COUNT(*) as total
+    FROM price_list_audit_details d
+    INNER JOIN audit_logs l ON d.audit_log_id = l.id
+    WHERE l.module = 'Price List Management'
+    AND MONTH(l.created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+    AND YEAR(l.created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+")->fetch_assoc()['total'] ?? 0;
+
+$logChange = calculatePercentageChange($currentLogs, $previousLogs);
 ?>
 
 <link rel="stylesheet" href="/contract_system/assets/css/price_lists.css">
@@ -77,10 +166,20 @@ if($resultChartLogs){
             <div class="card" style="background-color:#3b82f6;">
                 <div class="icon">📄</div>
                 <div>
-                    <h4>Total Submitted Forms</h4>
-                    <p><?= $totalSubmittedForms ?></p>
+                    <h4>Total PRs Received</h4>
+                    <p><?= $totalPRReceived ?></p>
                 </div>
-                <div class="trend up"><span class="arrow">↑</span>5%</div>
+                <div class="trend <?= $prChange > 0 ? 'up' : ($prChange < 0 ? 'down' : '') ?>" 
+                    title="Compared to last month">
+                    
+                    <span class="arrow">
+                        <?= $prChange > 0 ? '↑' : ($prChange < 0 ? '↓' : '→') ?>
+                    </span>
+                    
+                    <?= abs($prChange) ?>%
+                    
+                    <small class="trend-label">vs last month</small>
+                </div>
             </div>
 
             <div class="card" style="background-color:#f59e0b;">
@@ -89,16 +188,36 @@ if($resultChartLogs){
                     <h4>Total Price List Items</h4>
                     <p><?= $totalItems ?></p>
                 </div>
-                <div class="trend down"><span class="arrow">↓</span>2%</div>
+                <div class="trend <?= $itemChange > 0 ? 'up' : ($itemChange < 0 ? 'down' : '') ?>" 
+                    title="Compared to last month">
+                    
+                    <span class="arrow">
+                        <?= $itemChange > 0 ? '↑' : ($itemChange < 0 ? '↓' : '→') ?>
+                    </span>
+                    
+                    <?= abs($itemChange) ?>%
+                    
+                    <small class="trend-label">vs last month</small>
+                </div>
             </div>
 
             <div class="card" style="background-color:#10b981;">
                 <div class="icon">📝</div>
                 <div>
-                    <h4>Total Logs / Transactions</h4>
+                    <h4>Total Logs</h4>
                     <p><?= $totalLogs ?></p>
                 </div>
-                <div class="trend up"><span class="arrow">↑</span>8%</div>
+                <div class="trend <?= $logChange > 0 ? 'up' : ($logChange < 0 ? 'down' : '') ?>" 
+                    title="Compared to last month">
+                    
+                    <span class="arrow">
+                        <?= $logChange > 0 ? '↑' : ($logChange < 0 ? '↓' : '→') ?>
+                    </span>
+                    
+                    <?= abs($logChange) ?>%
+                    
+                    <small class="trend-label">vs last month</small>
+                </div>
             </div>
         </div>
 
@@ -108,7 +227,7 @@ if($resultChartLogs){
                 <canvas id="itemsChart"></canvas>
             </div>
             <div class="card" style="flex:1; min-width:300px;">
-                <h3>Logs / Transactions (Last 6 Months)</h3>
+                <h3>Total Logs (Last 6 Months)</h3>
                 <canvas id="logsChart"></canvas>
             </div>
         </div>
@@ -164,15 +283,28 @@ if($resultChartLogs){
                             <th>Request ID</th>
                             <th>Requested By</th>
                             <th>Department</th>
-                            <th>Items</th>
                             <th>Status</th>
                             <th>Submitted At</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td colspan="6" style="text-align:center;">No purchase requests yet.</td>
-                        </tr>
+                        <?php if(!empty($recentPurchaseRequests)): ?>
+                            <?php foreach($recentPurchaseRequests as $pr): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($pr['pr_id']) ?></td>
+                                    <td><?= htmlspecialchars($pr['created_by']) ?></td>
+                                    <td><?= htmlspecialchars($pr['project'] ?: '-') ?></td>
+                                    <td>
+                                        <span class="status-badge status-approved">Approved</span>
+                                    </td>
+                                    <td><?= date("M d, Y", strtotime($pr['created_at'])) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" style="text-align:center;">No purchase requests yet.</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

@@ -132,19 +132,22 @@ const totalActive = <?php echo $total_active; ?>;
 
 <div id="editUserModal" class="modal">
     <div class="modal-content">
-        <span class="close-btn">&times;</span>
         <h2>Edit User</h2>
+
         <form id="editUserForm" enctype="multipart/form-data">
             <input type="hidden" name="user_id" id="edit_user_id">
 
+            <!-- BASIC INFO -->
             <div class="form-group">
                 <label>Full Name</label>
                 <input type="text" name="full_name" id="edit_full_name" required>
             </div>
+
             <div class="form-group">
                 <label>Email</label>
                 <input type="email" name="email" id="edit_email" required>
             </div>
+
             <div class="form-group">
                 <label>Role</label>
                 <select name="role" id="edit_role" required>
@@ -156,31 +159,67 @@ const totalActive = <?php echo $total_active; ?>;
                     <option value="client">Client</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label>Contact Number</label>
                 <input type="text" name="contact" id="edit_contact">
             </div>
+
             <div class="form-group">
                 <label>Complete Address</label>
                 <input type="text" name="address" id="edit_address">
             </div>
+
             <div class="form-group">
                 <label>Branch / Location</label>
                 <input type="text" name="branch" id="edit_branch">
             </div>
 
+           <div class="password-section">
+                <h3>Change Password</h3>
+                <p class="password-note">Leave blank if you don’t want to change the password</p>
+
+                <div class="form-group password-group">
+                    <label>New Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" name="new_password" id="edit_password">
+                        <span class="toggle-password" onclick="togglePassword('edit_password', this)">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="currentColor"
+                                    d="M12 4.5C7.305 4.5 3.273 7.61 1.5 12c1.773 4.39 5.805 7.5 10.5 7.5s8.727-3.11 10.5-7.5C20.727 7.61 16.695 4.5 12 4.5zm0 12.75A5.25 5.25 0 1 1 12 6.75a5.25 5.25 0 0 1 0 10.5zm0-8.25A3 3 0 1 0 12 15a3 3 0 0 0 0-6z"/>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group password-group">
+                    <label>Confirm Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" name="confirm_new_password" id="edit_confirm_password">
+                        <span class="toggle-password" onclick="togglePassword('edit_confirm_password', this)">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                <path fill="currentColor"
+                                    d="M12 4.5C7.305 4.5 3.273 7.61 1.5 12c1.773 4.39 5.805 7.5 10.5 7.5s8.727-3.11 10.5-7.5C20.727 7.61 16.695 4.5 12 4.5zm0 12.75A5.25 5.25 0 1 1 12 6.75a5.25 5.25 0 0 1 0 10.5zm0-8.25A3 3 0 1 0 12 15a3 3 0 0 0 0-6z"/>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILES -->
             <div class="form-group">
                 <label>Profile Picture</label>
-                <input type="file" name="profile_picture" id="edit_profile_picture">
+                <input type="file" name="profile_picture">
             </div>
+
             <div class="form-group">
                 <label>Signature</label>
-                <input type="file" name="signature" id="edit_signature">
+                <input type="file" name="signature">
             </div>
 
             <button type="submit" class="primary-btn">Save Changes</button>
 
-            <button type="button" id="deleteUserBtn" class="primary-btn" style="background:#e74c3c;">
+            <button type="button" id="deleteUserBtn" class="danger-btn">
                 Delete User
             </button>
         </form>
@@ -214,6 +253,17 @@ const totalActive = <?php echo $total_active; ?>;
 <?php require_once "../../layouts/footer.php"; ?>
 
 <script>
+function togglePassword(inputId, toggleElement){
+    const input = document.getElementById(inputId);
+    if(input.type === 'password'){
+        input.type = 'text';
+        toggleElement.style.color = '#2563eb';
+    } else {
+        input.type = 'password';
+        toggleElement.style.color = '#64748b';
+    }
+}
+
 function showAlert(message, type = "success") {
     const alertBox = document.getElementById("pageAlert");
 

@@ -4,7 +4,7 @@ require_once "../../core/session.php";
 require_once "../../core/auth.php";
 require_once "../../core/audit.php"; 
 
-authorize(['operations_officer']);
+authorize(['operations_officer', 'admin', 'president', 'operations_manager']);
 
 header('Content-Type: application/json');
 
@@ -45,6 +45,7 @@ $frequency_map = [
     "Monthly" => 1,
     "Every 2 months" => 0.5,
     "Quarterly" => 0.25,
+    "Every 4 months" => 1/4,
     "Semi-Annually" => 0.1667,
     "Annually" => 1/12,
     "Every 1.5 years" => 1/18,

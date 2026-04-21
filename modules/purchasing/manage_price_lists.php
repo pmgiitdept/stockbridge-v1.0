@@ -6,7 +6,7 @@ require_once "../../core/session.php";
 require_once "../../core/auth.php";
 require_once __DIR__.'/../../vendor/autoload.php';
 
-authorize(['purchasing_officer']);
+authorize(['purchasing_officer', 'president']);
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -44,8 +44,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['price_list_file'])){
 
                 if($checkResult['count'] == 0){ 
                     $stmt = $conn->prepare("INSERT INTO price_lists 
-                        (reference_id, item_code, item_description, unit, unit_price, pmgi_unit_price) 
-                        VALUES (?, ?, ?, ?, ?, ?)");
+                    (reference_id, item_code, item_description, unit, unit_price, pmgi_unit_price, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'active')");
                     $stmt->bind_param("ssssdd", $reference_id, $item_code, $item_description, $unit, $unit_price, $pmgi_unit_price);
                     $stmt->execute();
                     $stmt->close();
@@ -122,32 +122,46 @@ $stmt->close();
             <?php endif; ?>
 
             <div class="table-header">
-                <div class="upload-container">
-                    <form id="uploadForm" method="POST" enctype="multipart/form-data">
-                        <input type="file" name="price_list_file" accept=".xls,.xlsx" required>
-                        <button type="submit">Upload</button>
+                <div class="header-left">
+                    <form id="uploadForm" method="POST" enctype="multipart/form-data" class="upload-form">
+                        <label class="file-upload">
+                            <input type="file" name="price_list_file" id="fileInput" accept=".xls,.xlsx" required>
+                            <span class="file-btn">📁 Choose File</span>
+                            <span id="fileName" class="file-name">No file chosen</span>
+                        </label>
+                        <button type="submit" class="btn-primary upload-btn">Upload</button>
                     </form>
-                    <span class="upload-label">Select an Excel file (.xls or .xlsx) to upload price list items.</span>
+                    <span class="upload-label">
+                        Upload Excel file (.xls / .xlsx)
+                    </span>
                 </div>
 
-                <div class="search-container">
-                    <input type="text" id="filterInput" placeholder="Search by Item Code or Description" value="<?= htmlspecialchars($search) ?>">
-                    <button id="clearSearch" title="Clear search">&times;</button>
+                <div class="header-center">
+                    <div class="search-container">
+                        <input type="text" id="filterInput"
+                            placeholder="Search item code or description..."
+                            value="<?= htmlspecialchars($search) ?>">
+                        <button id="clearSearch" title="Clear search">&times;</button>
+                    </div>
                 </div>
 
-                <button id="addItemBtn" class="btn-primary">Add Item</button>
+                <div class="header-right">
+                    <button id="addItemBtn" class="btn-primary add-btn">
+                        + Add Item
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive">
                 <table id="priceListTable">
                     <thead>
                         <tr>
-                            <th>Reference ID</th>
                             <th>Item Code</th>
                             <th>Item Description</th>
                             <th>Unit</th>
                             <th>Unit Price <div class="subtext">at Cost with 12% Vat</div></th>
                             <th>PMGI Unit Price <div class="subtext">with 30% Margin</div></th>
+                            <th>Status</th>
                             <th>Uploaded At</th>
                             <th>Actions</th>
                         </tr>
@@ -156,22 +170,31 @@ $stmt->close();
                         <?php if (!empty($priceLists)): ?>
                             <?php foreach($priceLists as $row): ?>
                                 <tr data-id="<?= $row['id'] ?>">
-                                    <td><?= htmlspecialchars($row['reference_id']) ?></td>
                                     <td><?= htmlspecialchars($row['item_code']) ?></td>
                                     <td><?= htmlspecialchars($row['item_description']) ?></td>
                                     <td><?= htmlspecialchars($row['unit']) ?></td>
                                     <td><?= '₱ ' . number_format((float)$row['unit_price'], 2) ?></td>
                                     <td><?= '₱ ' . number_format((float)$row['pmgi_unit_price'], 2) ?></td>
+                                    <td>
+                                        <span class="status-badge <?= $row['status'] === 'active' ? 'status-active' : 'status-inactive' ?>">
+                                            <?= ucfirst($row['status']) ?>
+                                        </span>
+                                    </td>
                                     <td><?= date("M d, Y H:i", strtotime($row['uploaded_at'])) ?></td>
                                     <td>
                                         <button class="btn-edit">Edit</button>
+                                        <button class="btn-toggle-status" 
+                                            data-id="<?= $row['id'] ?>" 
+                                            data-status="<?= $row['status'] ?>">
+                                            <?= $row['status'] === 'active' ? 'Deactivate' : 'Activate' ?>
+                                        </button>
                                         <button class="btn-delete" data-id="<?= $row['id'] ?>">Delete</button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" style="text-align:center;">No price list records found.</td>
+                                <td colspan="8" style="text-align:center;">No price list records found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -438,6 +461,26 @@ function showToast(message, type = 'success') {
     }, 3500);
 }
 
+document.querySelectorAll('.btn-toggle-status').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+
+        fetch('toggle_price_status.php', {
+            method: 'POST',
+            body: new URLSearchParams({ id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success){
+                showToast('Status updated successfully!', 'success');
+                setTimeout(()=> location.reload(), 800);
+            } else {
+                showToast('Error: ' + data.message, 'error');
+            }
+        })
+        .catch(() => showToast('Network error.', 'error'));
+    });
+});
 </script>
 
 <?php require_once "../../layouts/footer.php"; ?>

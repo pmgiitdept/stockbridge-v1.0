@@ -5,7 +5,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['purchasing_officer']);
+authorize(['purchasing_officer', 'purchasing_manager', 'president']);
 
 $limit = 12; 
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -97,6 +97,7 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
             <div class="table-header">
                 <div class="filter-container">
                     <span class="filter-label">Filter Logs:</span>
+                    <span class="filter-help">Use multiple filters to narrow down log entries.</span>
                     <form method="GET" class="filter-form">
                         <input type="month" name="month" value="<?= htmlspecialchars($selectedMonth) ?>" class="filter-input" placeholder="Month">
 
@@ -108,7 +109,6 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
                         <button type="submit" class="btn-primary filter-btn">Apply Filter</button>
                         <a href="price_lists_logs.php" class="btn-cancel filter-btn">Clear</a>
                     </form>
-                    <span class="filter-help">Use multiple filters to narrow down log entries.</span>
                 </div>
             </div>
 
@@ -118,7 +118,6 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
                         <tr>
                             <th>User 👤</th>
                             <th title="Which field was changed">Field 🔧</th>
-                            <th title="Reference ID of the item">Reference ID 🆔</th>
                             <th title="Item Code">Item Code 📦</th>
                             <th title="Previous value before change">Old Value 🔙</th>
                             <th title="New value after change">New Value 🔜</th>
@@ -131,7 +130,6 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
                                 <tr>
                                     <td><?= htmlspecialchars($log['user_name']) ?></td>
                                     <td><?= htmlspecialchars($log['field_name']) ?></td>
-                                    <td><?= htmlspecialchars($log['reference_id']) ?></td>
                                     <td><?= htmlspecialchars($log['item_code']) ?></td>
                                     <td class="old-value"><?= htmlspecialchars($log['old_value'] ?? '-') ?></td>
                                     <td class="new-value"><?= htmlspecialchars($log['new_value'] ?? '-') ?></td>

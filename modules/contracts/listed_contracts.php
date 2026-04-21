@@ -48,6 +48,7 @@ $months_per_frequency = [
     "Monthly" => 1,
     "Every 2 months" => 2,
     "Quarterly" => 3,
+    "Every 4 months" => 4,
     "Semi-Annually" => 6,
     "Annually" => 12,
     "Every 1.5 years" => 18,
@@ -475,6 +476,14 @@ $selectedSite = $_GET['site'] ?? '';
                     </select>
                 </div>
             </div>
+            
+            <div style="margin-bottom: 15px; display:flex; justify-content: space-between; align-items:center;">
+                <input type="file" id="importExcel" accept=".xlsx,.xls" hidden>
+
+                <button type="button" class="btn-secondary" onclick="document.getElementById('importExcel').click()">
+                    📂 Import Excel
+                </button>
+            </div>
 
             <div class="contracts-modal-table">
                 <table id="addContractsTable">
@@ -496,8 +505,7 @@ $selectedSite = $_GET['site'] ?? '';
                         <tr>
                             <td><input type="text" name="unit_no[]" required></td>
                             <td><input type="text" name="particulars[]" required></td>
-                            <td><input type="number" step="1" min="1" name="quantity[]" required
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '')"></td>
+                            <td><input type="number" step="0.01" min="0" name="quantity[]" required></td>
                             <td><input type="text" name="unit[]" required></td>
                             <td><input type="number" step="0.01" name="cost_per_unit[]" required></td>
                             <td>
@@ -505,6 +513,7 @@ $selectedSite = $_GET['site'] ?? '';
                                     <option value="Monthly">Monthly</option>
                                     <option value="Every 2 months">Every 2 months</option>
                                     <option value="Quarterly">Quarterly</option>
+                                    <option value="Every 4 months">Every 4 months</option>
                                     <option value="Semi-Annually">Semi-Annually</option>
                                     <option value="Annually">Annually</option>
                                     <option value="Every 1.5 years">Every 1.5 years</option>
@@ -527,7 +536,9 @@ $selectedSite = $_GET['site'] ?? '';
                                 </select>
                             </td>
                             <td>
-                                <input type="text" name="site[]" placeholder="Optional">
+                                <input type="text" name="site[]" 
+                                    placeholder="e.g. Site A, Site B, Site C"
+                                    class="site-input">
                             </td>
                             <td>
                                 <button type="button" class="btn-remove-row">Remove</button>
@@ -610,6 +621,7 @@ $selectedSite = $_GET['site'] ?? '';
                             <option value="Monthly">Monthly</option>
                             <option value="Every 2 months">Every 2 months</option>
                             <option value="Quarterly">Quarterly</option>
+                            <option value="Every 4 months">Every 4 months</option>
                             <option value="Semi-Annually">Semi-Annually</option>
                             <option value="Annually">Annually</option>
                             <option value="Every 1.5 years">Every 1.5 years</option>
@@ -857,7 +869,128 @@ $selectedSite = $_GET['site'] ?? '';
     </div>
 </div>
 
+<div id="viewContractsModal" class="custom-modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>📑 Contracts Related to This Project</h3>
+            <span class="modal-subtitle">Detailed contract items with costs</span>
+        </div>
+        <div class="modal-body">
+            <div class="contracts-table-container">
+                <table id="contractsTable" class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>Unit Code</th>
+                            <th>Particulars</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                            <th>Cost per Unit</th>
+                            <th>Total Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align:center;">Loading contracts...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal('viewContractsModal')">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
+
+function populateContractsTable(rows) {
+    addContractsTable.innerHTML = '';
+
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+            <td><input type="text" name="unit_no[]" value="${row.unit_no}" required></td>
+            <td><input type="text" name="particulars[]" value="${row.particulars}" required></td>
+            <td><input type="number" name="quantity[]" value="${row.quantity}" required></td>
+            <td><input type="text" name="unit[]" value="${row.unit}" required></td>
+            <td><input type="number" step="0.01" name="cost_per_unit[]" value="${row.cost_per_unit}" required></td>
+
+            <td>
+                <select name="frequency[]">
+                    ${buildOptions([
+                        "Monthly","Every 2 months","Quarterly","Every 4 months","Semi-Annually",
+                        "Annually","Every 1.5 years","Every 2 years","Every 3 years","Every 4 years"
+                    ], row.frequency)}
+                </select>
+            </td>
+
+            <td>
+                <select name="category[]">
+                    ${buildOptions(["Supply","Tool"], row.category)}
+                </select>
+            </td>
+
+            <td>
+                <select name="billing_type[]">
+                    ${buildOptions(["none","free_of_charge","bill_to_actual"], row.billing_type)}
+                </select>
+            </td>
+
+            <td><input type="text" name="site[]" value="${row.site}"></td>
+
+            <td><button type="button" class="btn-remove-row">Remove</button></td>
+        `;
+
+        addContractsTable.appendChild(tr);
+    });
+}
+
+function buildOptions(options, selectedValue) {
+    return options.map(opt => `
+        <option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>
+            ${opt}
+        </option>
+    `).join('');
+}
+
+document.getElementById('importExcel').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('excel_file', file);
+
+    fetch('import_contract_preview.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(async res => {
+        const text = await res.text(); // read raw response first
+
+        try {
+            const data = JSON.parse(text);
+
+            if (!data.success) {
+                showToast(data.message, 'error');
+                return;
+            }
+
+            populateContractsTable(data.rows);
+            showToast('Excel imported successfully!', 'success');
+
+        } catch (e) {
+            console.error("Server returned invalid JSON:", text);
+            showToast('Server error. Check console.', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Import failed.', 'error');
+    });
+});
+
 document.getElementById('filterSite').addEventListener('change', function() {
     const site = this.value;
     const params = new URLSearchParams(window.location.search);
@@ -970,6 +1103,7 @@ const monthsPerFrequency = {
     "Monthly": 1,
     "Every 2 months": 2,
     "Quarterly": 3,
+    "Every 4 months": 4,
     "Semi-Annually": 6,
     "Annually": 12,
     "Every 1.5 years": 18,
@@ -1138,6 +1272,7 @@ document.addEventListener('click', function(e) {
                         <td>${smrf.created_at}</td>
                         <td>
                             <button class="btn-view-items"
+                                data-client-id="${clientId}"
                                 data-smrf-id="${smrf.id}"
                                 data-reference-id="${smrf.reference_id ?? ''}"
                                 data-project="${smrf.project ?? ''}"
@@ -1160,6 +1295,7 @@ document.addEventListener('click', function(e) {
     }
 
     if (e.target.classList.contains('btn-view-items')) {
+
         const smrfTableRows = document.querySelectorAll('#smrfTable tbody tr');
         smrfTableRows.forEach(r => r.classList.remove('smrf-selected-row'));
 
@@ -1178,12 +1314,47 @@ document.addEventListener('click', function(e) {
 
         const itemsModal = document.getElementById('smrfItemsModal');
         const viewModal = document.getElementById('viewSmrfModal');
+        const contractsModal = document.getElementById('viewContractsModal');
 
-        viewModal.classList.add('side-left');
-        if (itemsModal.style.display !== 'flex') {
-            itemsModal.style.display = 'flex';
-            itemsModal.classList.add('side-right');
-        }
+        viewModal.style.display = 'none';
+
+        contractsModal.style.display = 'flex';
+        contractsModal.classList.add('side-left');
+
+        itemsModal.style.display = 'flex';
+        itemsModal.classList.add('side-right');
+
+        const contractsTbody = document.querySelector('#contractsTable tbody');
+        contractsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Loading contracts...</td></tr>`;
+
+        fetch(`get_contracts.php?client_id=${clientId}`)
+            .then(res => res.json())
+            .then(contracts => {
+                contractsTbody.innerHTML = '';
+
+                if (!contracts.length) {
+                    contractsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No contracts found.</td></tr>`;
+                    return;
+                }
+
+                contracts.forEach(c => {
+                    const total = (c.quantity || 0) * (c.cost_per_unit || 0);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${c.unit_no ?? '-'}</td>
+                        <td>${c.particulars ?? '-'}</td>
+                        <td>${c.quantity ? parseInt(c.quantity).toLocaleString() : '-'}</td>
+                        <td>${c.unit ?? '-'}</td>
+                        <td>₱ ${parseFloat(c.cost_per_unit || 0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td>₱ ${total.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                    `;
+                    contractsTbody.appendChild(tr);
+                });
+            })
+            .catch(() => {
+                contractsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to load contracts.</td></tr>`;
+            });
 
         document.getElementById('modalSmrfId').textContent = smrfId ?? '-';
         document.getElementById('modalReferenceId').textContent = referenceId ?? '-';
@@ -1293,13 +1464,20 @@ document.addEventListener('click', function(e) {
     }
 });
 
-document.querySelectorAll('#smrfItemsModal .modal-close, #smrfItemsModal .btn-cancel').forEach(btn => {
+document.querySelectorAll('#smrfItemsModal .btn-cancel').forEach(btn => {
     btn.addEventListener('click', () => {
+
         const itemsModal = document.getElementById('smrfItemsModal');
+        const contractsModal = document.getElementById('viewContractsModal');
+        const viewModal = document.getElementById('viewSmrfModal');
+
         itemsModal.style.display = 'none';
         itemsModal.classList.remove('side-right');
 
-        const viewModal = document.getElementById('viewSmrfModal');
+        contractsModal.style.display = 'none';
+        contractsModal.classList.remove('side-left');
+
+        viewModal.style.display = 'flex';
         viewModal.classList.remove('side-left');
     });
 });

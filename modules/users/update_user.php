@@ -15,6 +15,8 @@ $role = $_POST['role'] ?? '';
 $contact = $_POST['contact'] ?? '';
 $address = $_POST['address'] ?? '';
 $branch = $_POST['branch'] ?? '';
+$new_password = $_POST['new_password'] ?? '';
+$confirm_password = $_POST['confirm_new_password'] ?? '';
 
 $upload_dir = "../../uploads/"; 
 $profile_path = '';
@@ -41,14 +43,29 @@ if(!$user_id){
     exit;
 }
 
+// --- VALIDATE PASSWORD ---
+if(!empty($new_password)){
+    if($new_password !== $confirm_password){
+        echo json_encode(['success'=>false, 'message'=>'Passwords do not match']);
+        exit;
+    }
+    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+    $update_password_sql = ", password='".mysqli_real_escape_string($conn, $hashed_password)."'";
+} else {
+    $update_password_sql = "";
+}
+
+// --- UPDATE USERS TABLE ---
 $update_user = mysqli_query($conn, "
     UPDATE users SET 
         full_name='".mysqli_real_escape_string($conn,$full_name)."',
         email='".mysqli_real_escape_string($conn,$email)."',
-        role='".mysqli_real_escape_string($conn,$role)."'
+        role='".mysqli_real_escape_string($conn,$role)."' 
+        $update_password_sql
     WHERE id='".intval($user_id)."'
 ");
 
+// --- UPDATE OR INSERT PROFILE ---
 $update_profile = mysqli_query($conn, "
     INSERT INTO user_profiles (user_id, contact, address, branch, profile_picture, signature)
     VALUES ('".intval($user_id)."', '".mysqli_real_escape_string($conn,$contact)."',
@@ -66,12 +83,11 @@ $update_profile = mysqli_query($conn, "
 
 if($update_user && $update_profile){
 
-    // Get updated user's email for logging
     $log_email = mysqli_real_escape_string($conn, $email);
 
     logAudit(
         $conn,
-        $_SESSION['user_id'], // Admin performing action
+        $_SESSION['user_id'], 
         "Updated user: $log_email (ID: $user_id)",
         "User Management"
     );

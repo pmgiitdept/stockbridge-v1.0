@@ -5,7 +5,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_manager', 'president']);
+authorize(['operations_manager', 'president', 'purchasing_officer']);
 
 $rowsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;

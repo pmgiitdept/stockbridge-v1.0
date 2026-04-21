@@ -3,7 +3,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['operations_officer', 'operations_manager']);
+authorize(['operations_officer', 'operations_manager', 'purchasing_officer', 'purchasing_manager', 'president']);
 
 header('Content-Type: application/json');
 

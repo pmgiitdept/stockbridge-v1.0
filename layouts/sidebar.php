@@ -3,9 +3,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: /contract_system/login.php");
+    exit();
+}
+
 require_once $_SERVER['DOCUMENT_ROOT'] . '/contract_system/config/database.php';
 
-$userId = $_SESSION['user_id'] ?? 0;
+$userId = $_SESSION['user_id'];
+
+$currentPage = basename($_SERVER['PHP_SELF']);
 
 $stmt = $conn->prepare("
     SELECT u.full_name, u.email, u.role, u.status,
@@ -18,6 +25,19 @@ $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 $userData = $result->fetch_assoc();
+
+if (!$userData) {
+    session_unset();
+    session_destroy();
+    header("Location: /contract_system/login.php");
+    exit();
+}
+
+$role = $userData['role'] ?? '';
+
+function isActive($page) {
+    return basename($_SERVER['PHP_SELF']) === $page ? 'active' : '';
+}
 ?>
 
 <div class="sidebar">
@@ -28,96 +48,113 @@ $userData = $result->fetch_assoc();
         </div>
 
         <ul class="nav-links">
+
             <?php if ($_SESSION['role'] === 'admin'): ?>
-                <li><a href="../dashboard/index.php">Dashboard</a></li>
+                <li><a href="../dashboard/index.php" class="<?= isActive('index.php') ?>">Dashboard</a></li>
 
                 <li class="menu-label">User Management</li>
-                <li><a href="../users/manage_users.php">Manage Users</a></li>
-                <li><a href="../users/create_user.php">Create User</a></li>
+                <li><a href="../users/manage_users.php" class="<?= isActive('manage_users.php') ?>">Manage Users</a></li>
+                <li><a href="../users/create_user.php" class="<?= isActive('create_user.php') ?>">Create User</a></li>
+                
+                <li class="menu-label">Results and Status</li>
+                <li><a href="../forms/forms_status.php" class="<?= isActive('forms_status.php') ?>">Forms Status Archives</a></li>
+
+                <li class="menu-label">Reports & Logs</li>
+                <li><a href="../reports/reports.php" class="<?= isActive('reports.php') ?>">Reports</a></li>
+                <li><a href="../audit_logs/view_logs.php" class="<?= isActive('view_logs.php') ?>">Audit Logs</a></li>
+
+                <li class="menu-label">Error & Debugging</li>
+                <li><a href="../error_logs/view_errors.php" class="<?= isActive('view_errors.php') ?>">Error Logs</a></li>
             <?php endif; ?>
+
 
             <?php if ($_SESSION['role'] === 'client'): ?>
-                <li><a href="../client/dashboard.php">Dashboard</a></li>
+                <li><a href="../client/dashboard.php" class="<?= isActive('dashboard.php') ?>">Dashboard</a></li>
                 
                 <li class="menu-label">Item Lists</li>
-                <li><a href="../client/item_lists.php">Item Lists</a></li>
+                <li><a href="../client/item_lists.php" class="<?= isActive('item_lists.php') ?>">Item Lists</a></li>
 
                 <li class="menu-label">Forms</li>
-                <li><a href="../client/create_forms.php">Create Form</a></li>
-                <li><a href="../client/submitted_forms.php">Submitted Forms</a></li>
+                <li><a href="../client/create_forms.php" class="<?= isActive('create_forms.php') ?>">Create Form</a></li>
+                <li><a href="../client/submitted_forms.php" class="<?= isActive('submitted_forms.php') ?>">Submitted Forms</a></li>
             <?php endif; ?>
+
 
             <?php if ($_SESSION['role'] === 'operations_officer'): ?>
-                <li><a href="../operations_officer/dashboard.php">Dashboard</a></li>
+                <li><a href="../operations_officer/dashboard.php" class="<?= isActive('dashboard.php') ?>">Dashboard</a></li>
                 
                 <li class="menu-label">Master Lists</li>
-                <li><a href="../operations_officer/master_lists.php">Master Lists</a></li>
+                <li><a href="../operations_officer/master_lists.php" class="<?= isActive('master_lists.php') ?>">Master Lists</a></li>
 
                 <li class="menu-label">Forms Lists</li>
-                <li><a href="../operations_officer/forms_lists.php">List of Submitted Forms</a></li>
-                <li><a href="../operations_officer/smrf_lists.php">View SMRF Lists</a></li>
-
-                <li class="menu-label">Purchase Requests</li>
-                <li><a href="../forms/submitted_pr.php">Submitted PR</a></li>
+                <li><a href="../operations_officer/forms_lists.php" class="<?= isActive('forms_lists.php') ?>">List of Submitted Forms</a></li>
+                <li><a href="../operations_officer/smrf_lists.php" class="<?= isActive('smrf_lists.php') ?>">View SMRF Lists</a></li>
+                <li><a href="../forms/submitted_pr.php" class="<?= isActive('submitted_pr.php') ?>">Submitted PR</a></li>
 
                 <li class="menu-label">Contracts</li>
-                <li><a href="../contracts/listed_contracts.php">Listed Contracts</a></li>
+                <li><a href="../contracts/listed_contracts.php" class="<?= isActive('listed_contracts.php') ?>">Listed Contracts</a></li>
 
                 <li class="menu-label">Budget Monitoring</li>
-                <li><a href="../budgets/overall_budget.php">Overall Budgets</a></li>
-                <li><a href="../budgets/supplies_monitoring.php">Supplies Monitoring</a></li>
+                <li><a href="../budgets/overall_budget.php" class="<?= isActive('overall_budget.php') ?>">Overall Budgets</a></li>
+                <li><a href="../budgets/supplies_monitoring.php" class="<?= isActive('supplies_monitoring.php') ?>">Supplies Monitoring</a></li>
             <?php endif; ?>
+
 
             <?php if ($_SESSION['role'] === 'operations_manager'): ?>
-                <li><a href="../operations_manager/dashboard.php">Dashboard</a></li>
+                <li><a href="../operations_manager/dashboard.php" class="<?= isActive('dashboard.php') ?>">Dashboard</a></li>
                 
                 <li class="menu-label">Master Lists</li>
-                <li><a href="../operations_officer/master_lists.php">Master Lists</a></li>
+                <li><a href="../operations_officer/master_lists.php" class="<?= isActive('master_lists.php') ?>">Master Lists</a></li>
                 
-                <li class="menu-label">SMRF Lists</li>
-                <li><a href="../operations_manager/smrf_lists.php">SMRF Workflow</a></li>
-
-                <li class="menu-label">Purchase Requests</li>
-                <li><a href="../operations_manager/pr_lists.php">PR Workflow</a></li>
+                <li class="menu-label">Forms Lists for PR and SMRF</li>
+                <li><a href="../operations_manager/smrf_lists.php" class="<?= isActive('smrf_lists.php') ?>">SMRF Workflow</a></li>
+                <li><a href="../operations_manager/pr_lists.php" class="<?= isActive('pr_lists.php') ?>">PR Workflow</a></li>
 
                 <li class="menu-label">Contracts</li>
-                <li><a href="../contracts/listed_contracts.php">Listed Contracts</a></li>
+                <li><a href="../contracts/listed_contracts.php" class="<?= isActive('listed_contracts.php') ?>">Listed Contracts</a></li>
 
                 <li class="menu-label">Budget Monitoring</li>
-                <li><a href="../budgets/overall_budget.php">Overall Budgets</a></li>
-                <li><a href="../budgets/supplies_monitoring.php">Supplies Monitoring</a></li>
+                <li><a href="../budgets/overall_budget.php" class="<?= isActive('overall_budget.php') ?>">Overall Budgets</a></li>
+                <li><a href="../budgets/supplies_monitoring.php" class="<?= isActive('supplies_monitoring.php') ?>">Supplies Monitoring</a></li>
 
                 <li class="menu-label">Results and Status</li>
-                <li><a href="../forms/forms_status.php">Forms Status Archives</a></li>
+                <li><a href="../forms/forms_status.php" class="<?= isActive('forms_status.php') ?>">Forms Status Archives</a></li>
             <?php endif; ?>
 
-            <?php if (in_array($_SESSION['role'], ['admin','president'])): ?>
-                <li class="menu-label">Forms Management</li>
-                <li><a href="../forms/forms_status.php">Forms Status</a></li>
 
-                <li class="menu-label">Contract Management</li>
-                <li><a href="../contracts/listed_contracts.php">Listed Contracts</a></li>
+            <?php if ($_SESSION['role'] === 'president'): ?>
+                <li><a href="../president/dashboard.php" class="<?= isActive('dashboard.php') ?>">Dashboard</a></li>
                 
+                <li class="menu-label">Price Lists</li>
+                <li><a href="../president/price_lists.php" class="<?= isActive('price_lists.php') ?>">Price Lists</a></li>
+
+                <li class="menu-label">PR Management</li>
+                <li><a href="../president/pr_approval.php" class="<?= isActive('pr_approval.php') ?>">PR Approval</a></li>
+
+                <li class="menu-label">Inventory</li>
+                <li><a href="../president/inventory.php" class="<?= isActive('inventory.php') ?>">Inventory</a></li>
+
                 <li class="menu-label">Reports & Logs</li>
-                <li><a href="../reports/index.php">Reports</a></li>
-                <li><a href="../audit_logs/view_logs.php">Audit Logs</a></li>
+                <li><a href="../audit_logs/view_logs.php" class="<?= isActive('view_logs.php') ?>">Audit Logs</a></li>
+                <li><a href="../purchasing/price_lists_logs.php" class="<?= isActive('price_lists_logs.php') ?>">Price List Logs</a></li>
             <?php endif; ?>
+
 
             <?php if ($_SESSION['role'] === 'purchasing_officer'): ?>
-                <li><a href="../purchasing/dashboard.php">Dashboard</a></li>
+                <li><a href="../purchasing/dashboard.php" class="<?= isActive('dashboard.php') ?>">Dashboard</a></li>
 
                 <li class="menu-label">Purchasing</li>
-                <li><a href="../purchasing/manage_price_lists.php">Manage Price Lists</a></li>
-                <li><a href="../forms/purchase_requests.php">Purchase Requests Forms</a></li>
+                <li><a href="../purchasing/manage_price_lists.php" class="<?= isActive('manage_price_lists.php') ?>">Manage Price Lists</a></li>
+                <li><a href="../forms/purchase_requests.php" class="<?= isActive('purchase_requests.php') ?>">Purchase Requests Forms</a></li>
+                
+                <li class="menu-label">Forms Lists</li>
+                <li><a href="../operations_officer/view_smrf.php" class="<?= isActive('view_smrf.php') ?>">View SMRF Lists</a></li>
 
                 <li class="menu-label">Results and Status</li>
-                <li><a href="../forms/forms_status.php">Forms Status</a></li>
-                
-            <?php endif; ?>
+                <li><a href="../forms/forms_status.php" class="<?= isActive('forms_status.php') ?>">Forms Status</a></li>
 
-            <?php if (in_array($_SESSION['role'], ['president', 'purchasing_officer'])): ?>
                 <li class="menu-label">Logs</li>
-                <li><a href="../purchasing/price_lists_logs.php">Price List Logs</a></li>
+                <li><a href="../purchasing/price_lists_logs.php" class="<?= isActive('price_lists_logs.php') ?>">Price List Logs</a></li>
             <?php endif; ?>
 
         </ul>
@@ -125,8 +162,9 @@ $userData = $result->fetch_assoc();
 
     <div class="sidebar-bottom">
         <div class="sidebar-icons">
-            <div class="icon" onclick="openModal('settingsModal')">
-                <i class="fas fa-cog"></i>
+
+            <div class="icon" onclick="openModal('generalModal')">
+                <i class="fas fa-sliders-h"></i>
             </div>
 
             <div class="icon profile-icon" onclick="openModal('profileModal')">
@@ -136,10 +174,52 @@ $userData = $result->fetch_assoc();
             <div class="icon" onclick="openModal('helpModal')">
                 <i class="fas fa-question-circle"></i>
             </div>
+
+            <?php if ($_SESSION['role'] === 'admin'): ?>
+                <div class="icon" onclick="openModal('settingsModal')">
+                    <i class="fas fa-cog"></i>
+                </div>
+            <?php endif; ?>
+
         </div>
         <div class="logout-section">
             <a href="javascript:void(0)" class="logout-btn" onclick="openModal('logoutModal')">Logout</a>
         </div>
+    </div>
+</div>
+
+<div id="generalModal" class="custom-modal">
+    <div class="modal-content settings-modal">
+        <span class="close-btn" onclick="closeModal('generalModal')">&times;</span>
+        <h3>General Settings</h3>
+
+        <form id="generalUserSettingsForm">
+            <div class="form-group">
+                <label>Theme</label>
+                <select name="theme">
+                    <option value="light" selected>Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Sidebar Collapse</label>
+                <select name="sidebar">
+                    <option value="expanded" selected>Expanded</option>
+                    <option value="collapsed">Collapsed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Notification Preference</label>
+                <select name="notif">
+                    <option value="enabled" selected>Enabled</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-primary">Save Preferences</button>
+        </form>
     </div>
 </div>
 
@@ -333,6 +413,17 @@ $userData = $result->fetch_assoc();
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <script>
+document.getElementById("generalUserSettingsForm").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    localStorage.setItem("theme", formData.get("theme"));
+    localStorage.setItem("sidebar", formData.get("sidebar"));
+    localStorage.setItem("notif", formData.get("notif"));
+
+    alert("Preferences saved!");
+});
 document.getElementById("supportForm").addEventListener("submit", function(e){
     e.preventDefault();
     const formData = new FormData(this);

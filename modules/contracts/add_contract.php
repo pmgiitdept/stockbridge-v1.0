@@ -4,7 +4,7 @@ require_once "../../core/session.php";
 require_once "../../core/auth.php";
 require_once "../../core/audit.php"; 
 
-authorize(['operations_officer']);
+authorize(['operations_officer', 'admin', 'president', 'operations_manager']);
 
 header('Content-Type: application/json');
 
@@ -39,6 +39,7 @@ $user_id = intval($_POST['user_id']);
 $frequency_map = [
     "Monthly" => 1,
     "Every 2 months" => 0.5,
+    "Every 4 months" => 1/4,
     "Quarterly" => 0.25,
     "Semi-Annually" => 0.1667,
     "Annually" => 1/12,
@@ -65,18 +66,25 @@ try {
     }
 
     $rowCount = count($_POST['unit_no']);
+    $totalInserted = 0;
 
     for ($i = 0; $i < $rowCount; $i++) {
 
         $unit_no = trim($_POST['unit_no'][$i]);
         $particulars = trim($_POST['particulars'][$i]);
-        $quantity = intval($_POST['quantity'][$i]);
+        $quantity = floatval($_POST['quantity'][$i]);
         $unit = trim($_POST['unit'][$i]);
         $cost_per_unit = floatval($_POST['cost_per_unit'][$i]);
         $frequency = trim($_POST['frequency'][$i]);
         $category = trim($_POST['category'][$i]);
         $billing_type = trim($_POST['billing_type'][$i]);
-        $site = isset($_POST['site'][$i]) && trim($_POST['site'][$i]) !== '' ? trim($_POST['site'][$i]) : null;
+
+        $rawSites = isset($_POST['site'][$i]) ? $_POST['site'][$i] : '';
+        $siteList = array_filter(array_map('trim', explode(',', $rawSites)));
+
+        if (empty($siteList)) {
+            $siteList = [null];
+        }
 
         if (
             $unit_no === '' ||
@@ -100,25 +108,30 @@ try {
             $cost_per_month = $total_cost * $freq_multiplier;
         }
 
-        $stmt->bind_param(
-            "issisdssssdds",
-            $user_id,
-            $unit_no,
-            $particulars,
-            $quantity,
-            $unit,
-            $cost_per_unit,
-            $frequency,
-            $category,
-            $field_selected,
-            $site,         
-            $cost_per_month,
-            $total_cost,
-            $billing_type
-        );
+        foreach ($siteList as $site) {
 
-        if (!$stmt->execute()) {
-            throw new Exception("Insert failed: " . $stmt->error);
+            $stmt->bind_param(
+                "issisdssssdds",
+                $user_id,
+                $unit_no,
+                $particulars,
+                $quantity,
+                $unit,
+                $cost_per_unit,
+                $frequency,
+                $category,
+                $field_selected,
+                $site,
+                $cost_per_month,
+                $total_cost,
+                $billing_type
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Insert failed: " . $stmt->error);
+            }
+
+            $totalInserted++; 
         }
     }
 
@@ -128,7 +141,7 @@ try {
     logAudit(
         $conn,
         $_SESSION['user_id'],
-        "Added $rowCount contract(s) (category + field + billing type) for client ID $user_id",
+        "Added $totalInserted contract(s) across $rowCount row(s) (multi-site enabled) for client ID $user_id",
         "Contracts"
     );
 
