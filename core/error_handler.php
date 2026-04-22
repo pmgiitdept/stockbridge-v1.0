@@ -4,7 +4,6 @@ function logError($conn, $message, $file = null, $line = null, $type = 'ERROR', 
     try {
         $user_id = $_SESSION['user_id'] ?? null;
 
-        // ✅ NEW: Capture request context
         $url = $_SERVER['REQUEST_URI'] ?? null;
         $method = $_SERVER['REQUEST_METHOD'] ?? null;
 
@@ -35,17 +34,11 @@ function logError($conn, $message, $file = null, $line = null, $type = 'ERROR', 
     }
 }
 
-/**
- * Catch PHP Errors
- */
 set_error_handler(function($errno, $errstr, $errfile, $errline) use ($conn) {
     logError($conn, $errstr, $errfile, $errline, "PHP ERROR");
     return true; // prevent default PHP output
 });
 
-/**
- * Catch Exceptions
- */
 set_exception_handler(function($exception) use ($conn) {
     logError(
         $conn,
@@ -57,9 +50,6 @@ set_exception_handler(function($exception) use ($conn) {
     );
 });
 
-/**
- * Catch Fatal Errors
- */
 register_shutdown_function(function() use ($conn) {
     $error = error_get_last();
     if ($error !== null) {

@@ -3,11 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /contract_system/login.php");
-    exit();
-}
-
 require_once $_SERVER['DOCUMENT_ROOT'] . '/contract_system/config/database.php';
 
 $userId = $_SESSION['user_id'];
@@ -112,13 +107,14 @@ function isActive($page) {
 
                 <li class="menu-label">Contracts</li>
                 <li><a href="../contracts/listed_contracts.php" class="<?= isActive('listed_contracts.php') ?>">Listed Contracts</a></li>
+                
+                <li class="menu-label">Inventory</li>
+                <li><a href="../president/inventory.php" class="<?= isActive('inventory.php') ?>">Inventory</a></li>
 
                 <li class="menu-label">Budget Monitoring</li>
                 <li><a href="../budgets/overall_budget.php" class="<?= isActive('overall_budget.php') ?>">Overall Budgets</a></li>
                 <li><a href="../budgets/supplies_monitoring.php" class="<?= isActive('supplies_monitoring.php') ?>">Supplies Monitoring</a></li>
 
-                <li class="menu-label">Results and Status</li>
-                <li><a href="../forms/forms_status.php" class="<?= isActive('forms_status.php') ?>">Forms Status Archives</a></li>
             <?php endif; ?>
 
 
@@ -146,6 +142,9 @@ function isActive($page) {
                 <li class="menu-label">Purchasing</li>
                 <li><a href="../purchasing/manage_price_lists.php" class="<?= isActive('manage_price_lists.php') ?>">Manage Price Lists</a></li>
                 <li><a href="../forms/purchase_requests.php" class="<?= isActive('purchase_requests.php') ?>">Purchase Requests Forms</a></li>
+
+                <li class="menu-label">Inventory</li>
+                <li><a href="../president/inventory.php" class="<?= isActive('inventory.php') ?>">Inventory</a></li>
                 
                 <li class="menu-label">Forms Lists</li>
                 <li><a href="../operations_officer/view_smrf.php" class="<?= isActive('view_smrf.php') ?>">View SMRF Lists</a></li>

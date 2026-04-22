@@ -179,16 +179,14 @@
     color: #0f172a;
 }
 
-/* PASSWORD WRAPPER */
 .password-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-/* INPUT WITH SPACE FOR ICON */
 .password-wrapper input {
-    padding-right: 45px; /* space for icon */
+    padding-right: 45px; 
 }
 
 .toggle-password {

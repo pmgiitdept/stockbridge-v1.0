@@ -3,7 +3,7 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-authorize(['president']);
+authorize(['president', 'operations_manager', 'purchasing_officer']);
 
 require_once "../../layouts/header.php";
 require_once "../../layouts/sidebar.php";
@@ -11,6 +11,8 @@ require_once "../../layouts/sidebar.php";
 $selectedMonth = $_GET['month'] ?? date('Y-m');
 $itemFilter = $_GET['item'] ?? '';
 $categoryFilter = $_GET['category'] ?? '';
+
+$month = $selectedMonth;
 
 $where = "WHERE DATE_FORMAT(created_at, '%Y-%m') = ?";
 $params = [$selectedMonth];
@@ -30,16 +32,21 @@ if ($categoryFilter !== '') {
 
 $summaryInventorySql = "
     SELECT 
+        item_code,
         item_name,
         category,
-        SUM(IF(movement_type='IN', quantity, 0)) as total_in,
-        SUM(IF(movement_type='OUT', quantity, 0)) as total_out
+        SUM(IF(movement_type='IN', quantity, 0)) AS total_in,
+        SUM(IF(movement_type='OUT', quantity, 0)) AS total_out
     FROM inventory_movements
     $where
-    GROUP BY item_name, category
+    GROUP BY item_code, item_name, category
 ";
 
 $stmt1 = $conn->prepare($summaryInventorySql);
+if (!$stmt1) {
+    die("Inventory Summary Error: " . $conn->error);
+}
+
 $stmt1->bind_param($types, ...$params);
 $stmt1->execute();
 $res1 = $stmt1->get_result();
@@ -48,8 +55,8 @@ $summaryPrSql = "
     SELECT 
         pi.item_description AS item_name,
         'Supply' AS category,
-        0 as total_in,
-        SUM(pi.quantity) as total_out
+        0 AS total_in,
+        SUM(pi.quantity) AS total_out
     FROM pr_items pi
     JOIN pr_forms pf ON pi.pr_id = pf.pr_id
     WHERE pf.approved_at IS NOT NULL
@@ -67,18 +74,23 @@ $summaryPrSql .= " GROUP BY pi.item_description";
 
 $res2 = $conn->query($summaryPrSql);
 
+if (!$res2) {
+    die("PR Summary Error: " . $conn->error);
+}
+
 $summaryData = [];
 
-while($row = $res1->fetch_assoc()){
-    $key = $row['item_name'];
+while ($row = $res1->fetch_assoc()) {
+    $key = $row['item_code'];
     $summaryData[$key] = $row;
 }
 
-while($row = $res2->fetch_assoc()){
+while ($row = $res2->fetch_assoc()) {
     $key = $row['item_name'];
 
-    if(!isset($summaryData[$key])){
+    if (!isset($summaryData[$key])) {
         $summaryData[$key] = $row;
+        $summaryData[$key]['item_code'] = '';
     } else {
         $summaryData[$key]['total_out'] += $row['total_out'];
     }
@@ -87,6 +99,7 @@ while($row = $res2->fetch_assoc()){
 $stmt2 = $conn->prepare("
     SELECT 
         id,
+        item_code,
         item_name,
         category,
         quantity,
@@ -99,6 +112,10 @@ $stmt2 = $conn->prepare("
     ORDER BY created_at DESC
 ");
 
+if (!$stmt2) {
+    die("Inventory Movements Error: " . $conn->error);
+}
+
 $stmt2->bind_param($types, ...$params);
 $stmt2->execute();
 $resInventory = $stmt2->get_result();
@@ -106,6 +123,7 @@ $resInventory = $stmt2->get_result();
 $historyPrSql = "
     SELECT 
         pi.id,
+        '' AS item_code,
         pi.item_description AS item_name,
         'Supply' AS category,
         pi.quantity,
@@ -130,335 +148,35 @@ $historyPrSql .= " ORDER BY pf.approved_at DESC";
 
 $resPR = $conn->query($historyPrSql);
 
+if (!$resPR) {
+    die("PR History Error: " . $conn->error);
+}
+
 $historyData = [];
 
-while($row = $resInventory->fetch_assoc()){
+while ($row = $resInventory->fetch_assoc()) {
     $historyData[] = $row;
 }
 
-while($row = $resPR->fetch_assoc()){
+while ($row = $resPR->fetch_assoc()) {
     $historyData[] = $row;
 }
 
-usort($historyData, function($a, $b){
+usort($historyData, function ($a, $b) {
     return strtotime($b['created_at']) - strtotime($a['created_at']);
 });
 ?>
 
-<style>
-.inventory-header {
-    display:flex;
-    justify-content: space-between;
-    align-items:center;
-    margin-bottom:15px;
-}
-
-.inventory-card {
-    background:#fff;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.06);
-    margin-bottom:20px;
-}
-
-.table-responsive {
-    max-height:420px;
-    overflow-y:auto;
-}
-
-table {
-    width:100%;
-    border-collapse:collapse;
-}
-
-table th, table td {
-    padding:10px;
-    border-bottom:1px solid #eee;
-}
-
-table th {
-    position:sticky;
-    top:0;
-    background:#f9fafb;
-    z-index:2;
-}
-
-.badge-in {
-    background:#d1fae5;
-    color:#065f46;
-    padding:4px 8px;
-    border-radius:6px;
-    font-size:12px;
-}
-
-.badge-out {
-    background:#fee2e2;
-    color:#7f1d1d;
-    padding:4px 8px;
-    border-radius:6px;
-    font-size:12px;
-}
-
-.filter-bar {
-    display:flex;
-    flex-wrap:wrap;
-    gap:15px;
-    align-items:flex-end;
-}
-
-.filter-group {
-    display:flex;
-    flex-direction:column;
-    font-size:13px;
-}
-
-.filter-group input,
-.filter-group select {
-    padding:6px 8px;
-    border-radius:6px;
-    border:1px solid #ddd;
-}
-
-.filter-actions {
-    display:flex;
-    gap:10px;
-}
-
-.custom-modal {
-    display:none;
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(17,24,39,0.6);
-    backdrop-filter: blur(4px);
-    justify-content:center;
-    align-items:center;
-    z-index:1001;
-}
-
-.modal-content {
-    background:#fff;
-    padding:0;
-    border-radius:14px;
-    width:460px;
-    max-height:85vh;
-    overflow:hidden;
-    box-shadow:0 20px 60px rgba(0,0,0,0.25);
-    animation: pop 0.2s ease-in-out;
-}
-
-@keyframes pop {
-    from { transform:scale(0.95); opacity:0; }
-    to { transform:scale(1); opacity:1; }
-}
-
-.modal-header {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:16px 18px;
-    border-bottom:1px solid #eee;
-    background:#f9fafb;
-}
-
-.modal-header h3 {
-    margin:0;
-    font-size:16px;
-    font-weight:600;
-    color:#111827;
-}
-
-.close-btn {
-    font-size:22px;
-    cursor:pointer;
-    color:#6b7280;
-}
-.close-btn:hover {
-    color:#111827;
-}
-
-.modal-grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-    padding:18px;
-}
-
-.form-box {
-    display:flex;
-    flex-direction:column;
-}
-
-.form-box.full-width {
-    grid-column:1 / -1;
-}
-
-.form-box label {
-    font-size:12px;
-    font-weight:600;
-    margin-bottom:5px;
-    color:#374151;
-}
-
-.form-box input,
-.form-box select {
-    padding:8px 10px;
-    border:1px solid #e5e7eb;
-    border-radius:8px;
-    font-size:13px;
-    outline:none;
-}
-
-.form-box input:focus,
-.form-box select:focus {
-    border-color:#3b82f6;
-    box-shadow:0 0 0 2px rgba(59,130,246,0.15);
-}
-
-.file-upload {
-    border:1px dashed #d1d5db;
-    padding:10px;
-    border-radius:8px;
-    text-align:center;
-    background:#f9fafb;
-}
-
-.file-upload input {
-    width:100%;
-}
-
-.modal-actions {
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
-    padding:14px 18px;
-    border-top:1px solid #eee;
-    background:#fff;
-}
-
-.btn-primary {
-    background:#3b82f6;
-    color:#fff;
-    border:none;
-    padding:8px 14px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:500;
-}
-
-.btn-primary:hover {
-    background:#2563eb;
-}
-
-.btn-secondary {
-    background:#e5e7eb;
-    color:#111827;
-    padding:8px 14px;
-    border-radius:8px;
-    border:none;
-    cursor:pointer;
-}
-.btn-secondary:hover {
-    background:#d1d5db;
-}
-
-#attachmentsModal .modal-content {
-    width: 600px;
-    max-width: 90%;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-}
-
-.attachments-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid #eee;
-    background: #f9fafb;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-}
-
-.attachments-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.attachments-body {
-    padding: 15px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.attachment-item {
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 12px;
-    background: #fff;
-    transition: 0.2s ease;
-}
-
-.attachment-item:hover {
-    box-shadow: 0 6px 14px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-}
-
-.attachment-title {
-    font-weight: 600;
-    color: #2563eb;
-    text-decoration: none;
-}
-
-.attachment-title:hover {
-    text-decoration: underline;
-}
-
-.attachment-meta {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 6px;
-    line-height: 1.4;
-}
-
-.attachment-actions {
-    display: flex;
-    align-items: center;
-}
-
-.attachments-empty {
-    text-align: center;
-    padding: 30px 10px;
-    color: #6b7280;
-}
-
-.attachments-body::-webkit-scrollbar {
-    width: 6px;
-}
-.attachments-body::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 10px;
-}
-
-.positive-stock strong {
-    background: #d1fae5;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-
-.negative-stock strong {
-    background: #fee2e2;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-</style>
+<link rel="stylesheet" href="/contract_system/assets/css/inventory.css">
 
 <div class="main-content">
-    <h1>Inventory Monitoring</h1>
+    <div class="page-header">
+        <h1>Inventory Monitoring</h1>
+        <p class="page-subtitle">
+            Track stock movement, monitor supply usage, and review supplier invoices. 
+            Use filters to analyze inventory activity and detect shortages or overstock.
+        </p>
+    </div>
 
     <div class="inventory-card">
         <div class="inventory-header">
@@ -466,11 +184,15 @@ table th {
 
         <div style="display:flex; gap:10px;">
             <button onclick="openModal('addInventoryModal')" class="btn-primary">
-                + Add Supplier Invoice
+                + Add Invoice (Stock Entry)
             </button>
 
             <button onclick="viewAllAttachments()" class="btn-secondary">
-                📎 View All Attachments
+                📎 View Invoice Files
+            </button>
+
+            <button onclick="openModal('rebuildModal')" class="btn-secondary">
+                🔄 Rebuild Monthly Summary
             </button>
         </div>
     </div>
@@ -503,12 +225,44 @@ table th {
     </div>
 
     <div class="inventory-card">
+        <h2>Overview</h2>
+
+        <div style="display:flex; gap:15px; flex-wrap:wrap;">
+
+            <div class="stat-box">
+                <span>Total Items</span>
+                <strong><?= count($summaryData) ?></strong>
+            </div>
+
+            <div class="stat-box">
+                <span>Total IN</span>
+                <strong>
+                    <?= number_format(array_sum(array_column($summaryData,'total_in')),2) ?>
+                </strong>
+            </div>
+
+            <div class="stat-box">
+                <span>Total OUT</span>
+                <strong>
+                    <?= number_format(array_sum(array_column($summaryData,'total_out')),2) ?>
+                </strong>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="inventory-card">
         <h2>Stock Summary</h2>
+        <p class="section-subtitle">
+            Overview of total stock received (IN), issued (OUT), and remaining balance per item.
+            Negative values indicate shortages or over-issuance.
+        </p>
 
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
+                        <th>Item Code</th>
                         <th>Item</th>
                         <th>Category</th>
                         <th>Total IN</th>
@@ -519,6 +273,7 @@ table th {
                 <tbody>
                 <?php foreach($summaryData as $row): ?>
                     <tr>
+                        <td><?= htmlspecialchars($row['item_code'] ?? '-') ?></td>
                         <td><?= htmlspecialchars($row['item_name']) ?></td>
                         <td><?= htmlspecialchars($row['category']) ?></td>
                         <td><?= number_format($row['total_in'],2) ?></td>
@@ -530,9 +285,20 @@ table th {
 
                         <td class="<?= $remainingClass ?>">
                             <strong><?= number_format($remaining, 2) ?></strong>
+                            <div style="font-size:10px; color:#6b7280;">
+                                <?= $remaining < 0 ? 'Shortage' : 'Available' ?>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
+
+                <?php if(empty($summaryData)): ?>
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+                        No inventory data found for selected filters.
+                    </td>
+                </tr>
+                <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -540,6 +306,9 @@ table th {
 
     <div class="inventory-card">
         <h2>Inventory Movements</h2>
+        <p class="section-subtitle">
+            Detailed log of all stock entries (IN) and issuances (OUT), including supplier invoices and PR releases.
+        </p>
 
         <div class="table-responsive">
             <table>
@@ -566,17 +335,137 @@ table th {
                             </span>
                         </td>
                         <td>
-                            <?= htmlspecialchars($row['reference_type']) ?> #<?= $row['reference_id'] ?>
+                            <?php if($row['reference_type'] === 'INVOICE'): ?>
+                                <span style="font-weight:600;">Invoice</span><br>
+                                <small>#<?= htmlspecialchars($row['reference_id']) ?></small>
+                            <?php else: ?>
+                                <?= htmlspecialchars($row['reference_type']) ?> <span style="font-weight:600;"></span><br>
+                                <small>#<?= htmlspecialchars($row['reference_id']) ?></small>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <button class="btn-primary"
-                                onclick="viewAttachments(<?= $row['reference_id'] ?>)">
+                                onclick="viewAttachments('<?= htmlspecialchars($row['reference_id']) ?>')">
                                 View
                             </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                
+                <?php if(empty($summaryData)): ?>
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+                        No inventory data found for selected filters.
+                    </td>
+                </tr>
+                <?php endif; ?>
 
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="inventory-card">
+        <h2>Monthly Inventory History</h2>
+        <p class="section-subtitle">
+            Monthly breakdown of stock inflow, usage, and remaining balance carried forward.
+        </p>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>IN</th>
+                        <th>OUT</th>
+                        <th>LEFT</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <?php
+                    $histSql = "
+                        SELECT 
+                            month,
+                            item_code,
+                            item_name,
+                            category,
+                            total_in,
+                            total_out,
+                            ending_balance
+                        FROM inventory_monthly_summary
+                        WHERE 1=1
+                    ";
+
+                    $histParams = [];
+                    $histTypes = "";
+
+                    if (!empty($selectedMonth)) {
+                        $histSql .= " AND month = ?";
+                        $histParams[] = $selectedMonth;
+                        $histTypes .= "s";
+                    }
+
+                    if (!empty($itemFilter)) {
+                        $histSql .= " AND item_name LIKE ?";
+                        $histParams[] = "%$itemFilter%";
+                        $histTypes .= "s";
+                    }
+
+                    if (!empty($categoryFilter)) {
+                        $histSql .= " AND category = ?";
+                        $histParams[] = $categoryFilter;
+                        $histTypes .= "s";
+                    }
+
+                    $histSql .= " ORDER BY month DESC, item_name ASC";
+
+                    $histStmt = $conn->prepare($histSql);
+
+                    if (!$histStmt) {
+                        die("Monthly Inventory History Error: " . $conn->error);
+                    }
+
+                    if (!empty($histParams)) {
+                        $histStmt->bind_param($histTypes, ...$histParams);
+                    }
+
+                    $histStmt->execute();
+                    $histRes = $histStmt->get_result();
+                    ?>
+
+                    <?php if ($histRes->num_rows > 0): ?>
+                        <?php while($h = $histRes->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($h['month']) ?></td>
+
+                                <td>
+                                    <?= htmlspecialchars($h['item_name']) ?>
+                                    <div style="font-size:11px; color:#6b7280;">
+                                        <?= htmlspecialchars($h['item_code']) ?>
+                                    </div>
+                                </td>
+
+                                <td><?= htmlspecialchars($h['category']) ?></td>
+
+                                <td><?= number_format($h['total_in'], 2) ?></td>
+
+                                <td><?= number_format($h['total_out'], 2) ?></td>
+
+                                <td>
+                                    <strong><?= number_format($h['ending_balance'], 2) ?></strong>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">
+                                No monthly inventory data found for selected filters.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -584,7 +473,7 @@ table th {
 </div>
 
 <div id="addInventoryModal" class="custom-modal">
-    <div class="modal-content">
+    <div class="modal-content modal-lg">
 
         <div class="modal-header">
             <h3>📦 Add Supplier Invoice</h3>
@@ -593,32 +482,52 @@ table th {
 
         <form id="addInventoryForm" enctype="multipart/form-data">
 
-            <div class="modal-grid">
+            <div class="modal-body">
 
                 <div class="form-box">
-                    <label>Item Name</label>
-                    <input type="text" name="item_name" placeholder="e.g. Mop, Detergent" required>
-                </div>
-
-                <div class="form-box">
-                    <label>Category</label>
-                    <select name="category" required>
-                        <option value="Supply">Supply</option>
-                        <option value="Tool">Tool</option>
-                    </select>
-                </div>
-
-                <div class="form-box">
-                    <label>Quantity</label>
-                    <input type="number" step="0.01" name="quantity" placeholder="0.00" required>
-                </div>
-
-                <div class="form-box">
-                    <label>Invoice No</label>
+                    <label>Invoice No (Reference ID)</label>
                     <input type="text" name="reference_id" placeholder="INV-0001" required>
                 </div>
 
-                <div class="form-box full-width">
+                <div class="form-box">
+                    <label>Items</label>
+
+                    <div class="table-wrapper">
+                        <table id="itemTable">
+                            <thead>
+                                <tr>
+                                    <th>Item Code</th>
+                                    <th>Item Name</th>
+                                    <th>Unit</th>
+                                    <th>Category</th>
+                                    <th>Qty</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemBody">
+                                <tr>
+                                    <td><input name="item_code[]" required></td>
+                                    <td><input name="item_name[]" required></td>
+                                    <td><input name="unit[]" required></td>
+                                    <td>
+                                        <select name="category[]" required>
+                                            <option value="Supply">Supply</option>
+                                            <option value="Tool">Tool</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" step="0.01" name="quantity[]" required></td>
+                                    <td>
+                                        <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="button" class="btn-secondary add-btn" onclick="addRow()">+ Add Item</button>
+                </div>
+
+                <div class="form-box">
                     <label>Attachment (Invoice File)</label>
                     <div class="file-upload">
                         <input type="file" name="attachment">
@@ -656,14 +565,151 @@ table th {
     </div>
 </div>
 
+<div id="fileViewerModal" class="custom-modal">
+    <div class="modal-content modal-lg" style="height:85vh; display:flex; flex-direction:column;">
+
+        <div class="modal-header">
+            <h3>📄 Attachment Preview</h3>
+            <span class="close-btn" onclick="closeFileViewer()">&times;</span>
+        </div>
+
+        <div style="flex:1; background:#111; display:flex; align-items:center; justify-content:center;">
+            <iframe id="fileViewerFrame" 
+                style="width:100%; height:100%; border:none; background:#fff;">
+            </iframe>
+        </div>
+
+    </div>
+</div>
+
+<div id="rebuildModal" class="custom-modal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h3>🔄 Rebuild Monthly Summary</h3>
+            <span class="close-btn" onclick="closeModal('rebuildModal')">&times;</span>
+        </div>
+
+        <div class="modal-body" style="padding:20px;">
+            <p style="margin-bottom:10px;">
+                This will recalculate all monthly inventory data.
+            </p>
+            <p style="font-size:13px; color:#6b7280;">
+                This may take a few seconds depending on your data size.
+            </p>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('rebuildModal')">
+                Cancel
+            </button>
+            <button class="btn-primary" onclick="confirmRebuild()">
+                Yes, Rebuild
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
 <script>
+function confirmRebuild(){
+
+    closeModal('rebuildModal');
+
+    const btns = document.querySelectorAll('.btn-primary, .btn-secondary');
+    btns.forEach(b => b.disabled = true);
+
+    showToast("Rebuilding monthly summary...", "warning");
+
+    fetch('rebuild_monthly_inventory.php')
+    .then(res => res.text())
+    .then(msg => {
+        showToast("Monthly summary updated!", "success");
+
+        setTimeout(() => location.reload(), 1000);
+    })
+    .catch(() => {
+        showToast("Failed to rebuild summary.", "error");
+        btns.forEach(b => b.disabled = false);
+    });
+}
+
+function openFileViewer(filePath){
+    const frame = document.getElementById('fileViewerFrame');
+    frame.src = filePath;
+    openModal('fileViewerModal');
+}
+
+function closeFileViewer(){
+    document.getElementById('fileViewerFrame').src = '';
+    closeModal('fileViewerModal');
+}
+
+function showToast(message, type = 'warning') {
+    const container = document.getElementById('toastContainer');
+
+    const toast = document.createElement('div');
+    toast.classList.add('toast', `toast-${type}`);
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3600);
+}
+
+function addRow() {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+        <td><input name="item_code[]" required></td>
+        <td><input name="item_name[]" required></td>
+        <td><input name="unit[]" required></td>
+        <td>
+            <select name="category[]" required>
+                <option value="Supply">Supply</option>
+                <option value="Tool">Tool</option>
+            </select>
+        </td>
+        <td><input type="number" step="0.01" name="quantity[]" required></td>
+        <td class="action-cell">
+            <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove item">
+                ✕
+            </button>
+        </td>
+    `;
+
+    document.getElementById("itemBody").appendChild(row);
+}
+
+function removeRow(btn) {
+    const tbody = document.getElementById("itemBody");
+
+    if (tbody.rows.length <= 1) {
+        showToast("At least one item is required.", "warning");
+        return;
+    }
+
+    const row = btn.closest("tr");
+
+    row.style.transition = "0.2s ease";
+    row.style.opacity = "0";
+    row.style.transform = "translateX(10px)";
+
+    setTimeout(() => row.remove(), 150);
+
+    showToast("Item removed.", "success");
+}
+
 function viewAllAttachments(){
 
     const params = new URLSearchParams(window.location.search);
 
     const container = document.getElementById('attachmentsList');
 
-    // Loading state
     container.innerHTML = '<p>Loading attachments...</p>';
     openModal('attachmentsModal');
 
@@ -693,7 +739,9 @@ function viewAllAttachments(){
                         <div style="display:flex; justify-content:space-between; gap:10px;">
 
                             <div>
-                                <a href="${f.file_path}" target="_blank" class="attachment-title">
+                                <a href="javascript:void(0)" 
+                               onclick="openFileViewer('/contract_system/${f.file_path}')"
+                                class="attachment-title">
                                     📄 ${f.file_name}
                                 </a>
 
@@ -705,7 +753,9 @@ function viewAllAttachments(){
                             </div>
 
                             <div class="attachment-actions">
-                                <a href="${f.file_path}" target="_blank" class="btn-secondary" style="font-size:12px;">
+                                <a href="javascript:void(0)" 
+                                onclick="openFileViewer('/contract_system/${f.file_path}')"
+                                class="btn-secondary" style="font-size:12px;">
                                     Open
                                 </a>
                             </div>
@@ -718,12 +768,13 @@ function viewAllAttachments(){
 
         container.innerHTML = html;
     })
-    .catch(err=>{
+    .catch(err => {
         container.innerHTML = `
             <div style="color:red;">
                 Failed to load attachments.
             </div>
         `;
+        showToast("Failed to load attachments.", "error");
         console.error(err);
     });
 }
@@ -740,13 +791,20 @@ document.getElementById('addInventoryForm').addEventListener('submit', function(
         method:'POST',
         body:formData
     })
-    .then(r=>r.json())
-    .then(d=>{
+    .then(r => r.json())
+    .then(d => {
         if(d.success){
-            location.reload();
+            showToast("Invoice added successfully!", "success");
+
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
-            alert(d.message);
+            showToast(d.message || "Failed to save invoice.", "error");
         }
+    })
+    .catch(() => {
+        showToast("Network error. Please try again.", "error");
     });
 });
 
@@ -757,12 +815,13 @@ function viewAttachments(refId){
         let html = '';
 
         if(data.length === 0){
+            showToast("No attachments found.", "warning");
             html = '<p>No attachments found.</p>';
         } else {
             data.forEach(f=>{
                 html += `
                     <div class="attachment-item">
-                        <a href="${f.file_path}" target="_blank">${f.file_name}</a>
+                        <a href="javascript:void(0)" onclick="openFileViewer('/contract_system/${f.file_path}')">${f.file_name}</a>
                         <br>
                         <small>${f.uploaded_at}</small>
                     </div>
@@ -773,6 +832,20 @@ function viewAttachments(refId){
         document.getElementById('attachmentsList').innerHTML = html;
         openModal('attachmentsModal');
     });
+}
+
+function openFileViewer(filePath){
+    const frame = document.getElementById('fileViewerFrame');
+
+    if(filePath.match(/\.(jpg|jpeg|png|gif|webp)$/i)){
+        frame.outerHTML = `<img id="fileViewerFrame" src="${filePath}" 
+            style="max-width:100%; max-height:100%; object-fit:contain;">`;
+    } else {
+        frame.outerHTML = `<iframe id="fileViewerFrame" src="${filePath}" 
+            style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
+    }
+
+    openModal('fileViewerModal');
 }
 </script>
 

@@ -7,7 +7,7 @@ require_once __DIR__ . "/audit.php";
  *
  * @param array $allowed_roles
  */
-function authorize(array $allowed_roles)   // <-- renamed from requireRole
+function authorize(array $allowed_roles)   
 {
     if (!isset($_SESSION['role'])) {
         header("Location: /contract_system/login.php");
@@ -24,7 +24,6 @@ function authorize(array $allowed_roles)   // <-- renamed from requireRole
             $_SERVER['REQUEST_URI']
         );
 
-        header("HTTP/1.1 403 Forbidden");
         header("Location: /contract_system/modules/dashboard/index.php");
         exit();
     }

@@ -10,45 +10,30 @@ $where = "WHERE 1=1";
 $params = [];
 $types = "";
 
-/* =========================
-   FILTER: SINGLE REFERENCE
-========================= */
 if ($ref_id !== '') {
     $where .= " AND im.reference_id = ?";
     $params[] = intval($ref_id);
     $types .= "i";
 }
 
-/* =========================
-   FILTER: MONTH
-========================= */
 if ($month !== '') {
     $where .= " AND DATE_FORMAT(im.created_at, '%Y-%m') = ?";
     $params[] = $month;
     $types .= "s";
 }
 
-/* =========================
-   FILTER: ITEM NAME
-========================= */
 if ($item !== '') {
     $where .= " AND im.item_name LIKE ?";
     $params[] = "%$item%";
     $types .= "s";
 }
 
-/* =========================
-   FILTER: CATEGORY
-========================= */
 if ($category !== '') {
     $where .= " AND im.category = ?";
     $params[] = $category;
     $types .= "s";
 }
 
-/* =========================
-   MAIN QUERY
-========================= */
 $sql = "
     SELECT 
         ia.file_name,
@@ -72,9 +57,6 @@ if (!$stmt) {
     exit;
 }
 
-/* =========================
-   BIND PARAMS (SAFE)
-========================= */
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
@@ -88,7 +70,4 @@ while ($row = $result->fetch_assoc()) {
     $data[] = $row;
 }
 
-/* =========================
-   RESPONSE
-========================= */
 echo json_encode($data);

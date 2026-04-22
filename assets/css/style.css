@@ -420,7 +420,7 @@ body {
 
 .analytics-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr); 
     gap: 20px;
     margin-bottom: 20px;
 }
@@ -432,7 +432,7 @@ body {
     box-shadow: 0 8px 20px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
-    height: 320px; /* 🔥 fixed height for consistency */
+    height: 350px;
     align-items: center;
 }
 
@@ -441,16 +441,10 @@ body {
     margin-bottom: 10px;
 }
 
-/* Wrapper for canvas */
 .chart-container {
     position: relative;
     flex: 1;
-}
-
-/* Make canvas fill container */
-.chart-container canvas {
-    width: 100% !important;
-    height: 100% !important;
+    width: 100%;
 }
 
 .summary-grid {

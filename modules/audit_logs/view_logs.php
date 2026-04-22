@@ -186,17 +186,23 @@ $logs_result = mysqli_query($conn, $logsQuery);
     <div class="analytics-grid">
         <div class="analytics-card">
             <h3>Actions Per Module</h3>
-            <canvas id="moduleChart"></canvas>
+            <div class="chart-container">
+                <canvas id="moduleChart"></canvas>
+            </div>
         </div>
 
         <div class="analytics-card">
             <h3>Action Type Distribution</h3>
-            <canvas id="actionPieChart"></canvas>
+            <div class="chart-container">
+                <canvas id="actionPieChart"></canvas>
+            </div>
         </div>
 
         <div class="analytics-card">
             <h3>Activity Overview (Last 7 Days)</h3>
-            <canvas id="activityChart"></canvas>
+            <div class="chart-container">  
+                <canvas id="activityChart"></canvas>
+            </div>
         </div>
     </div>
 

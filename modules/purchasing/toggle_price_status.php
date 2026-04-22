@@ -2,7 +2,7 @@
 require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
-require_once "../../core/audit.php"; // ✅ ADD THIS
+require_once "../../core/audit.php"; 
 
 authorize(['purchasing_officer', 'president', 'operations_manager', 'admin']);
 
@@ -15,9 +15,6 @@ if (!$id) {
     exit;
 }
 
-/**
- * ✅ Get current item details (NOT just status)
- */
 $stmt = $conn->prepare("
     SELECT item_code, item_description, status 
     FROM price_lists 
@@ -36,17 +33,11 @@ if (!$result) {
 $oldStatus = $result['status'];
 $newStatus = $oldStatus === 'active' ? 'inactive' : 'active';
 
-/**
- * ✅ Update status
- */
 $stmt = $conn->prepare("UPDATE price_lists SET status=? WHERE id=?");
 $stmt->bind_param("si", $newStatus, $id);
 
 if ($stmt->execute()) {
 
-    /**
-     * ✅ MAIN AUDIT LOG
-     */
     logAudit(
         $conn,
         $_SESSION['user_id'],
@@ -56,9 +47,6 @@ if ($stmt->execute()) {
 
     $audit_log_id = $conn->insert_id;
 
-    /**
-     * ✅ FIELD-LEVEL AUDIT (like your update file)
-     */
     if ($oldStatus !== $newStatus) {
 
         $detail_stmt = $conn->prepare("
@@ -67,7 +55,6 @@ if ($stmt->execute()) {
             VALUES (?, ?, ?, ?, ?, ?)
         ");
 
-        // reference_id not fetched → set as NULL or empty
         $reference_id = ''; 
 
         $field_name = 'status';

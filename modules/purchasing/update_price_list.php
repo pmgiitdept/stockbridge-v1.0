@@ -26,20 +26,11 @@ if(!$id || !$reference_id || !$item_code || !$item_description || !$unit || $uni
     exit;
 }
 
-/**
- * Sanitize values
- */
 $unit_price = floatval(str_replace([',','₱',' '], '', $unit_price));
 $margin_percent = floatval($margin_percent);
 
-/**
- * ✅ ALWAYS COMPUTE PMGI (DO NOT TRUST FRONTEND)
- */
 $pmgi_unit_price = $unit_price + ($unit_price * ($margin_percent / 100));
 
-/**
- * Get OLD values (including margin)
- */
 $old_stmt = $conn->prepare("
     SELECT reference_id, item_code, item_description, unit, unit_price, margin_percent, pmgi_unit_price 
     FROM price_lists 
@@ -51,9 +42,6 @@ $old_result = $old_stmt->get_result();
 $old = $old_result->fetch_assoc();
 $old_stmt->close();
 
-/**
- * UPDATE query (now includes margin)
- */
 $stmt = $conn->prepare("
     UPDATE price_lists 
     SET reference_id=?, item_code=?, item_description=?, unit=?, unit_price=?, margin_percent=?, pmgi_unit_price=? 
@@ -74,9 +62,6 @@ $stmt->bind_param(
 
 if ($stmt->execute()) {
 
-    /**
-     * ✅ MAIN AUDIT LOG
-     */
     logAudit(
         $conn,
         $_SESSION['user_id'],
@@ -86,9 +71,6 @@ if ($stmt->execute()) {
 
     $audit_log_id = $conn->insert_id;
 
-    /**
-     * ✅ FIELD-BY-FIELD AUDIT
-     */
     $fields = [
         'reference_id' => $reference_id,
         'item_code' => $item_code,
@@ -102,7 +84,6 @@ if ($stmt->execute()) {
     foreach($fields as $field => $new_value) {
         $old_value = $old[$field] ?? '';
 
-        // Normalize numeric comparison
         if(is_numeric($old_value) && is_numeric($new_value)){
             $old_value = floatval($old_value);
             $new_value = floatval($new_value);

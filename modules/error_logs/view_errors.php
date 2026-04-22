@@ -7,9 +7,6 @@ require_once "../../core/auth.php";
 
 authorize(['admin','president']);
 
-// ==============================
-// FILTERS & PAGINATION
-// ==============================
 $search = $_GET['search'] ?? '';
 $from   = $_GET['from'] ?? '';
 $to     = $_GET['to'] ?? '';
@@ -39,9 +36,6 @@ if (!empty($type)) {
 
 $whereSQL = $where ? "WHERE " . implode(" AND ", $where) : "";
 
-// ==============================
-// SUMMARY CARDS
-// ==============================
 $todayTotal = mysqli_fetch_assoc(mysqli_query($conn,"
     SELECT COUNT(*) as total FROM error_logs WHERE DATE(created_at)=CURDATE()
 "))['total'];
@@ -63,9 +57,6 @@ $grandTotal = mysqli_fetch_assoc(mysqli_query($conn,"
     SELECT COUNT(*) as total FROM error_logs
 "))['total'];
 
-// ==============================
-// ERROR TYPE DISTRIBUTION
-// ==============================
 $typeQuery = mysqli_query($conn,"
     SELECT error_type, COUNT(*) as total
     FROM error_logs
@@ -80,9 +71,6 @@ while($row = mysqli_fetch_assoc($typeQuery)){
     $errorTotals[] = $row['total'];
 }
 
-// ==============================
-// DAILY TREND (LAST 7 DAYS)
-// ==============================
 $trendQuery = mysqli_query($conn,"
     SELECT DATE(created_at) as day, COUNT(*) as total
     FROM error_logs
@@ -99,9 +87,6 @@ while($row = mysqli_fetch_assoc($trendQuery)){
     $totals[] = $row['total'];
 }
 
-// ==============================
-// TOTAL ROWS FOR PAGINATION
-// ==============================
 $countQuery = "
 SELECT COUNT(*) as total
 FROM error_logs e
@@ -112,9 +97,6 @@ $countResult = mysqli_query($conn, $countQuery);
 $totalRows   = mysqli_fetch_assoc($countResult)['total'];
 $totalPages  = ceil($totalRows / $limit);
 
-// ==============================
-// FETCH LOGS
-// ==============================
 $query = "
 SELECT e.*, u.full_name
 FROM error_logs e
@@ -125,6 +107,22 @@ LIMIT $limit OFFSET $offset
 ";
 
 $result = mysqli_query($conn, $query);
+
+$topFilesQuery = mysqli_query($conn,"
+    SELECT error_file, COUNT(*) as total
+    FROM error_logs
+    GROUP BY error_file
+    ORDER BY total DESC
+    LIMIT 5
+");
+
+$topFiles = [];
+$topCounts = [];
+
+while($row = mysqli_fetch_assoc($topFilesQuery)){
+    $topFiles[] = basename($row['error_file']); 
+    $topCounts[] = $row['total'];
+}
 ?>
 
 <div class="main-content">
@@ -156,6 +154,11 @@ $result = mysqli_query($conn, $query);
         <div class="analytics-card">
             <h3>Error Trend (Last 7 Days)</h3>
             <canvas id="trendChart"></canvas>
+        </div>
+
+        <div class="analytics-card">
+            <h3>Top Error Sources</h3>
+            <canvas id="sourceChart"></canvas>
         </div>
     </div>
 
@@ -296,6 +299,24 @@ new Chart(document.getElementById('trendChart'), {
         plugins: { legend: { display: false } },
         scales: {
             y: { beginAtZero: true, precision:0 }
+        }
+    }
+});
+
+new Chart(document.getElementById('sourceChart'), {
+    type: 'bar',
+    data: {
+        labels: <?= json_encode($topFiles) ?>,
+        datasets: [{
+            label: 'Errors',
+            data: <?= json_encode($topCounts) ?>
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, precision: 0 }
         }
     }
 });

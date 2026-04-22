@@ -3,7 +3,6 @@ require_once "../../config/database.php";
 require_once "../../core/session.php";
 require_once "../../core/auth.php";
 
-// Only allow admins or president
 authorize(['admin','president']);
 
 header('Content-Type: application/json');
@@ -22,7 +21,6 @@ if (!$report_id || !$action_taken || !$status) {
     exit;
 }
 
-// Fetch report info
 $stmt = $conn->prepare("SELECT user_id, type FROM user_reports WHERE id=?");
 $stmt->bind_param("i", $report_id);
 $stmt->execute();
@@ -34,17 +32,15 @@ if (!$report) {
     exit;
 }
 
-// Optional: perform actual actions (like password reset)
 if (stripos($action_taken, 'password reset') !== false && $report['type'] === 'password_change') {
     $user_id = $report['user_id'];
-    $temp_pass = bin2hex(random_bytes(4)); // temporary password
+    $temp_pass = bin2hex(random_bytes(4)); 
     $hash = password_hash($temp_pass, PASSWORD_DEFAULT);
 
     $conn->query("UPDATE users SET password='$hash' WHERE id=$user_id");
     $action_taken .= " (Temporary password: $temp_pass)";
 }
 
-// Update report
 $stmt_update = $conn->prepare("UPDATE user_reports SET action_taken=?, status=?, updated_at=NOW() WHERE id=?");
 $stmt_update->bind_param("ssi", $action_taken, $status, $report_id);
 
